@@ -1,0 +1,21 @@
+{
+  "name": "prasi-deploy",
+  "module": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --silent --watch ./pkgs/index.ts dev",
+    "prod": "bun run --silent ./pkgs/index.ts",
+    "pkgs-upgrade": "bun run --silent ./pkgs/upgrade.ts"
+  },
+  "workspaces": [
+    "app/*",
+    "pkgs"
+  ],
+  "devDependencies": {
+    "bun-types": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": { "firebase-admin": "^11.11.0" }
+}
