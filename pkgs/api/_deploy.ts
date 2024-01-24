@@ -190,6 +190,7 @@ export const downloadFile = async (
     if (_url.hostname === "localhost") {
       _url.hostname = "127.0.0.1";
     }
+    g.log.info(`Downloading ${url} to ${filePath}`);
     const res = await fetch(_url);
     if (res.body) {
       const file = Bun.file(filePath);

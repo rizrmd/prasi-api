@@ -26,7 +26,7 @@ export const ensureNotRunning = async () => {
     };
 
     if (!(await checkPort())) {
-      g.log.warn(`Port ${process.env.PORT} is used, waiting...`);
+      g.log.warn(`Port ${g.port} is used, waiting...`);
       setInterval(async () => {
         if (await checkPort()) resolve();
       }, 500);
@@ -35,3 +35,7 @@ export const ensureNotRunning = async () => {
     }
   });
 };
+
+export function randomBetween(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1) + min);
+}

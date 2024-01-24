@@ -5,12 +5,19 @@ import { config } from "./utils/config";
 import { g } from "./utils/global";
 import { createLogger } from "./utils/logger";
 import { loadWeb } from "./server/load-web";
-import { ensureNotRunning } from "utils/ensure";
+import { ensureNotRunning, randomBetween } from "utils/ensure";
 import { preparePrisma } from "utils/prisma";
 import { startDevWatcher } from "utils/dev-watcher";
 
 g.mode = process.argv.includes("dev") ? "dev" : "prod";
 g.datadir = g.mode === "prod" ? "../data" : ".data";
+
+if (!process.env.PORT) {
+  g.port = randomBetween(5000, 15000);
+  await Bun.write(".env", `PORT=${g.port}`);
+} else {
+  g.port = parseInt(process.env.PORT);
+}
 
 await preparePrisma();
 await createLogger();
