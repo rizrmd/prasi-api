@@ -18,7 +18,6 @@ export const ensureNotRunning = async () => {
             },
           });
           s.end();
-          console.log("hello");
           done(false);
         } catch (e) {
           done(true);

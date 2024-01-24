@@ -8,9 +8,23 @@ import { prepareAPITypes } from "./server/prep-api-ts";
 import { config } from "./utils/config";
 import { g } from "./utils/global";
 import { createLogger } from "./utils/logger";
-
+import { dirAsync, existsAsync } from "fs-jetpack";
+import { dir } from "utils/dir";
+import { $ } from "execa";
 g.mode = process.argv.includes("dev") ? "dev" : "prod";
 g.datadir = g.mode === "prod" ? "../data" : ".data";
+
+if (!(await existsAsync(dir("app")))) {
+  await dirAsync(dir("app"));
+}
+
+if (!(await existsAsync(dir("app/db")))) {
+  await $`unzip -o pkgs/zip/db.zip -d app/db`;
+}
+
+if (!(await existsAsync(dir("app/srv")))) {
+  await $`unzip -o pkgs/zip/srv.zip -d app/srv`;
+}
 
 if (!process.env.PORT) {
   g.port = 3000;

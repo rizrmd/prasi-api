@@ -20,7 +20,6 @@ declare module "app/db/db" {
 declare module "pkgs/utils/global" {
     import { Logger } from "pino";
     import { RadixRouter } from "radix3";
-    
     import { Database } from "bun:sqlite";
     type SingleRoute = {
         url: string;
