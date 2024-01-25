@@ -3,9 +3,16 @@ WORKDIR /app/prasi
 
 RUN apt-get update
 RUN apt-get install unzip
-COPY package.json bun.lockb .
+
+COPY pkgs/docker-prep.ts .
+RUN bun docker-prep.ts
+COPY _tmp_docker .
+WORKDIR /app/prasi/_tmp_docker
 RUN bun install
-COPY . . 
+COPY _tmp_docker/node_modules .
+WORKDIR /app/prasi
+RUN rm -rf _tmp_docker
+COPY . .
 
 EXPOSE 3000/tcp
 CMD [ "bun", "run", "prod" ]
