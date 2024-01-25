@@ -1,5 +1,8 @@
 import { Subprocess } from "bun";
+import { $ } from "execa";
 import exitHook from "exit-hook";
+import { existsAsync } from "fs-jetpack";
+import { dir } from "utils/dir";
 import { checkPort, randomBetween } from "utils/ensure";
 
 let port = 0;
@@ -31,6 +34,14 @@ const main = {
 };
 
 console.log("Process Manager running at port:", port);
+
+if (await existsAsync(dir("app/db/.env"))) {
+  if (!(await existsAsync(dir("node_modules/.prisma")))) {
+    await $({ cwd: dir(`app/db`) })`bun install`;
+    await $({ cwd: dir(`app/db`) })`bun prisma db pull`;
+    await $({ cwd: dir(`app/db`) })`bun prisma generate`;
+  }
+}
 
 const startMain = () => {
   let mode = "started";
