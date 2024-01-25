@@ -1,9 +1,14 @@
 FROM oven/bun:1.0.18-debian as base
 WORKDIR /app/prasi
 
-RUN apt-get update
-RUN apt-get install unzip zip
 
+RUN apt-get update
+RUN apt-get install git curl gnupg zip unzip -yq
+RUN git config --global --add safe.directory /app/prasi/repo
+RUN curl -sL https://deb.nodesource.com/setup_20.x | bash -
+
+RUN apt-get update
+RUN apt-get install nodejs -yq
 
 COPY dockerzip .
 RUN unzip -o dockerzip
