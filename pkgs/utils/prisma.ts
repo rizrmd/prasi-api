@@ -6,8 +6,6 @@ import { g } from "./global";
 export const preparePrisma = async () => {
   if (await existsAsync(dir("app/db/.env"))) {
     if (!(await existsAsync(dir("node_modules/.prisma")))) {
-      await $({ cwd: dir(`app/db`) })`bun install`;
-      await $({ cwd: dir(`app/db`) })`bun prisma db pull`;
       await $({ cwd: dir(`app/db`) })`bun prisma generate`;
     }
     const { PrismaClient } = await import("../../app/db/db");
