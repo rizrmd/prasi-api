@@ -22,11 +22,11 @@ if (!(await existsAsync(dir("app")))) {
 }
 
 if (!(await existsAsync(dir("app/db")))) {
-  await $`unzip -o pkgs/zip/db.zip -d app/db`;
+  await $`unzip -o pkgs/zip/dbzip -d app/db`;
 }
 
 if (!(await existsAsync(dir("app/srv")))) {
-  await $`unzip -o pkgs/zip/srv.zip -d app/srv`;
+  await $`unzip -o pkgs/zip/srvzip -d app/srv`;
 }
 
 if (!process.env.PORT) {
