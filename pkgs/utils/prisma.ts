@@ -12,7 +12,7 @@ export const preparePrisma = async () => {
       const { PrismaClient } = await import("../../app/db/db");
       g.db = new PrismaClient();
     } catch (e) {
-      console.log("Prisma not initialized");
+      console.log("Prisma not initialized", e);
     }
   }
 
