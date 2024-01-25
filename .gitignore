@@ -174,5 +174,8 @@ dist
 # Finder (MacOS) folder config
 .DS_Store
 
-app/*
+app/web
+app/srv
+app/db
+app/static
 .data
