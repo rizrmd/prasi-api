@@ -71,6 +71,7 @@ DATABASE_URL="${action.url}"
         return "ok";
       case "db-pull":
         {
+          await $({ cwd: dir("app/db") })`bun install`;
           await $({ cwd: dir("app/db") })`bun prisma db pull`;
           await $({ cwd: dir("app/db") })`bun prisma generate`;
           res.send("ok");
