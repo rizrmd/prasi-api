@@ -6,7 +6,7 @@ RUN apt-get install unzip zip
 
 
 COPY dockerzip .
-RUN unzip dockerzip
+RUN unzip -o dockerzip
 RUN bun install
 COPY . .
 
