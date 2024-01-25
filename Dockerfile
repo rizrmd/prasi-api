@@ -6,7 +6,6 @@ RUN apt-get install unzip
 
 COPY pkgs/docker-prep.ts .
 RUN bun docker-prep.ts
-COPY _tmp_docker .
 WORKDIR /app/prasi/_tmp_docker
 RUN bun install
 COPY _tmp_docker/node_modules .
