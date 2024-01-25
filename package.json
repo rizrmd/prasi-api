@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "exit-hook": "^4.0.0",
+    "prisma": "^5.8.1",
     "firebase-admin": "^11.11.0"
   }
 }
