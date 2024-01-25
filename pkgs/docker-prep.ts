@@ -1,5 +1,12 @@
+import { $ } from "execa";
 import fs from "fs";
-import { copyAsync, dirAsync, removeAsync } from "fs-jetpack";
+import {
+  copyAsync,
+  dirAsync,
+  existsAsync,
+  removeAsync,
+  renameAsync,
+} from "fs-jetpack";
 import path from "path";
 
 const dir = {
@@ -30,13 +37,18 @@ const dir = {
   },
 };
 
-await removeAsync(dir.path("_tmp_docker"));
-for (const file of Object.keys(dir.read(dir.path``))) {
-  if (file.endsWith("package.json")) {
-    await dirAsync(dir.path("_tmp_docker", path.dirname(file)));
-    await copyAsync(dir.path(file), dir.path("_tmp_docker", file), {
-      overwrite: true,
-    });
+if (!(await existsAsync(dir.path("_tmp_docker")))) {
+  for (const file of Object.keys(dir.read(dir.path``))) {
+    if (file.endsWith("package.json")) {
+      await dirAsync(dir.path("_tmp_docker", path.dirname(file)));
+      await copyAsync(dir.path(file), dir.path("_tmp_docker", file), {
+        overwrite: true,
+      });
+    }
   }
+  await copyAsync(dir.path("bun.lockb"), dir.path("_tmp_docker", "bun.lockb"));
+
+  await $({ cwd: dir.path("_tmp_docker") })`zip -r ../docker .`;
+  await $`mv docker.zip dockerzip`;
+  await removeAsync(dir.path("_tmp_docker"));
 }
-await copyAsync(dir.path("bun.lockb"), dir.path("_tmp_docker", "bun.lockb"));
