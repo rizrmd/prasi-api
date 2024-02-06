@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "bun run --silent --watch ./pkgs/index.ts dev",
     "prod": "bun run --silent ./pkgs/prod.ts",
+    "prep": "bun run --silent ./pkgs/docker-prep.ts",
     "pkgs-upgrade": "bun run --silent ./pkgs/upgrade.ts"
   },
   "workspaces": [

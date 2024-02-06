@@ -4,8 +4,7 @@ import {
   copyAsync,
   dirAsync,
   existsAsync,
-  removeAsync,
-  renameAsync,
+  removeAsync
 } from "fs-jetpack";
 import path from "path";
 

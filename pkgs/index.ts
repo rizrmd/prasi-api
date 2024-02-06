@@ -12,8 +12,6 @@ import { dirAsync, existsAsync } from "fs-jetpack";
 import { dir } from "utils/dir";
 import { $ } from "execa";
 
-import "./docker-prep";
-
 g.mode = process.argv.includes("dev") ? "dev" : "prod";
 g.datadir = g.mode === "prod" ? "../data" : ".data";
 
