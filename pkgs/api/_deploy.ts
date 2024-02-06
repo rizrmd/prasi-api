@@ -1,6 +1,6 @@
 import { $ } from "execa";
 import * as fs from "fs";
-import { dirAsync, removeAsync } from "fs-jetpack";
+import { dirAsync, removeAsync, writeAsync } from "fs-jetpack";
 import { apiContext } from "service-srv";
 import { dir } from "utils/dir";
 import { g } from "utils/global";
@@ -71,6 +71,18 @@ DATABASE_URL="${action.url}"
         return "ok";
       case "db-pull":
         {
+          await writeAsync(
+            dir("app/db/prisma/schema.prisma"),
+            `\
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}`
+          );
           await $({ cwd: dir("app/db") })`bun install`;
           await $({ cwd: dir("app/db") })`bun prisma db pull`;
           await $({ cwd: dir("app/db") })`bun prisma generate`;
