@@ -1,4 +1,4 @@
-import { g } from "../utils/global";
+import { gzipSync } from "bun";
 
 const parseQueryParams = (ctx: any) => {
   const pageHref = ctx.req.url;
@@ -19,8 +19,8 @@ export const apiContext = (ctx: any) => {
     req: ctx.req as Request & { params: any; query_parameters: any },
     res: {
       ...ctx.res,
-      send: (body) => {
-        ctx.res = createResponse(ctx.res, body);
+      send: (body, cache_accept?: string) => {
+        ctx.res = createResponse(ctx.res, body, cache_accept);
       },
       sendStatus: (code: number) => {
         ctx.res._status = code;
@@ -29,19 +29,38 @@ export const apiContext = (ctx: any) => {
         ctx.res.headers.append(key, value);
       },
     } as Response & {
-      send: (body?: string | object) => void;
+      send: (body?: string | object, cache_accept?: string) => void;
       setHeader: (key: string, value: string) => void;
       sendStatus: (code: number) => void;
     },
   };
 };
 
-export const createResponse = (existingRes: any, body: any) => {
+const cache = { gz: {} as Record<string, Uint8Array> };
+
+export const createResponse = (
+  existingRes: any,
+  body: any,
+  cache_accept?: string
+) => {
   const status =
     typeof existingRes._status === "number" ? existingRes._status : undefined;
 
+  let content: any = typeof body === "string" ? body : JSON.stringify(body);
+  const headers = {} as Record<string, string>;
+  if (cache_accept && cache_accept.toLowerCase().includes("gz")) {
+    const content_hash = simpleHash(content);
+    if (content_hash) {
+      content = cache.gz[content_hash];
+    } else {
+      cache.gz[content_hash] = gzipSync(content);
+      content = cache.gz[content_hash];
+    }
+    headers["content-encoding"] = "gz";
+  }
+
   let res = new Response(
-    typeof body === "string" ? body : JSON.stringify(body),
+    content,
     status
       ? {
           status,
@@ -52,11 +71,22 @@ export const createResponse = (existingRes: any, body: any) => {
   if (typeof body === "object") {
     res.headers.append("content-type", "application/json");
   }
+  for (const [k, v] of Object.entries(headers)) {
+    res.headers.append(k, v);
+  }
 
   const cur = existingRes as Response;
-  for (const [key, value] of cur.headers.entries()) {
+  cur.headers.forEach((value, key) => {
     res.headers.append(key, value);
-  }
+  });
 
   return res;
 };
+
+function simpleHash(str: string) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  }
+  return (hash >>> 0).toString(36);
+}

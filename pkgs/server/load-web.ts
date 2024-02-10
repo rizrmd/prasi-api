@@ -8,15 +8,12 @@ import {
   removeAsync,
   writeAsync,
 } from "fs-jetpack";
-import { createRouter } from "radix3";
 import { gunzipSync } from "zlib";
 import { downloadFile } from "../api/_deploy";
 import { dir } from "../utils/dir";
 import { g } from "../utils/global";
 
 export const loadWeb = async () => {
-  g.web = {};
-
   await dirAsync(dir(`app/static`));
   const siteZip = `${
     g.mode === "dev" ? "http://localhost:4550" : "https://prasi.app"
@@ -53,39 +50,14 @@ export const loadWeb = async () => {
     if (!deploy) {
       await dirAsync(dir(`app/web/${web.name}/deploys`));
     }
-
-    g.web[web.name] = {
-      current: parseInt(
-        (await readAsync(dir(`app/web/${web.name}/current`))) || "0"
-      ),
-      deploys: deploy ? deploy.children.map((e) => parseInt(e.name)) : [],
-      domains:
-        (await readAsync(dir(`app/web/${web.name}/domains.json`), "json")) ||
-        [],
-      site_id: web.name,
-      deploying: null,
-      cacheKey: 0,
-      router: null,
-      cache: null,
-    };
-
-    const cur = g.web[web.name];
-
-    if (!cur.deploys.includes(cur.current)) {
-      cur.current = 0;
-    }
-
-    if (cur.current) {
-      await loadWebCache(cur.site_id, cur.current);
-    }
   }
 };
 
 const decoder = new TextDecoder();
 export const loadWebCache = async (site_id: string, ts: number | string) => {
-  const web = g.web[site_id];
+  const web = g.web;
   if (web) {
-    const path = dir(`app/web/${site_id}/deploys/${ts}`);
+    const path = dir(`app/web/deploys/${ts}`);
     if (await existsAsync(path)) {
       const fileContent = await readAsync(path, "buffer");
       if (fileContent) {
@@ -94,11 +66,6 @@ export const loadWebCache = async (site_id: string, ts: number | string) => {
         );
 
         const res = gunzipSync(fileContent);
-        web.cache = JSON.parse(decoder.decode(res));
-        web.router = createRouter();
-        for (const p of web.cache?.pages || []) {
-          web.router.insert(p.url, p);
-        }
       }
     }
   }

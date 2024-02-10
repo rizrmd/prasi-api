@@ -1,6 +1,5 @@
 import { statSync } from "fs";
 import { join } from "path";
-import { g } from "../utils/global";
 import { dir } from "utils/dir";
 
 const index = {
@@ -13,28 +12,13 @@ const index = {
 };
 
 export const serveWeb = async (url: URL, req: Request) => {
-  const domain = url.hostname;
   let site_id = "";
-  if (!g.domains) {
-    g.domains = {};
-    for (const web of Object.values(g.web)) {
-      for (const d of web.domains) {
-        const durl = new URL(d);
-        g.domains[durl.hostname] = web.site_id;
-      }
-    }
-  }
-  if (typeof g.domains[domain] === "undefined") {
-    g.domains[domain] = "";
-  }
-  site_id = g.domains[domain];
 
   if (!site_id) {
     return false;
   }
 
   const base = dir(`app/static/site`);
-  // const base = `/Users/r/Developer/prasi/.output/app/srv/site`;
 
   let path = join(base, url.pathname);
 
@@ -73,7 +57,7 @@ export const serveWeb = async (url: URL, req: Request) => {
     index.html = generateIndexHtml("", site_id);
   }
 
-  return [site_id, index.html];
+  return { site_id, index: index.html };
 };
 
 export const generateIndexHtml = (base_url: string, site_id: string) => {
@@ -95,10 +79,6 @@ export const generateIndexHtml = (base_url: string, site_id: string) => {
   <div id="root"></div>
   <script src="${base}/site.js" type="module"></script>
   <script>window.id_site = "${site_id}";</script>
-  <script
-    src="https://js.sentry-cdn.com/a2dfb8b1128f4018b83bdc9c08d18da2.min.js"
-    crossorigin="anonymous"
-  ></script>
 </body>
 </html>`;
 };

@@ -26,26 +26,10 @@ export const _ = {
   ) {
     const { res } = apiContext(this);
 
-    if (!g.web[action.id_site]) {
-      g.web[action.id_site] = {
-        current: 0,
-        domains: [],
-        deploying: null,
-        router: null,
-        deploys: [],
-        site_id: action.id_site,
-        cacheKey: 0,
-        cache: null,
-      };
-    }
-    const path = dir(`app/web/${action.id_site}`);
+    const path = dir(`app/web/`);
     await dirAsync(path);
 
-    const web = g.web[action.id_site];
-
-    if (!web.domains) {
-      web.domains = [];
-    }
+    const web = g.web;
 
     switch (action.type) {
       case "check":
@@ -53,7 +37,6 @@ export const _ = {
           now: Date.now(),
           current: web.current,
           deploys: web.deploys,
-          domains: web.domains,
           db: {
             url: g.dburl || "-",
           },
@@ -98,23 +81,6 @@ datasource db {
           setTimeout(() => {
             restartServer();
           }, 300);
-        }
-        break;
-      case "domain-add":
-        {
-          web.domains.push(action.domain);
-          await Bun.write(`${path}/domains.json`, JSON.stringify(web.domains));
-          g.domains = null;
-          res.send("ok");
-        }
-        break;
-      case "domain-del":
-        {
-          web.domains = web.domains.filter((e) => e !== action.domain);
-          await Bun.write(`${path}/domains.json`, web.domains);
-          g.domains = null;
-
-          res.send("ok");
         }
         break;
       case "deploy-del":

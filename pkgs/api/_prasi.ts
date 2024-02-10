@@ -3,9 +3,10 @@ import { apiContext } from "service-srv";
 import { g } from "utils/global";
 import { dir } from "utils/dir";
 
-const cache = {
-  dev: "",
-  prod: "",
+const generated = {
+  "load.json": "",
+  "load.js.dev": "",
+  "load.js.prod": "",
 };
 
 export const _ = {
@@ -21,15 +22,8 @@ export const _ = {
       "load.json": async () => {
         res.setHeader("content-type", "application/json");
         res.send(
-          JSON.stringify({
-            apiEntry: getApiEntry(),
-            apiTypes: (await getApiTypes()) || "",
-            prismaTypes: {
-              "prisma.d.ts": await getPrisma("prisma"),
-              "runtime/index.d.ts": await getPrisma("runtime"),
-              "runtime/library.d.ts": await getPrisma("library"),
-            },
-          })
+          await getContent("load.json"),
+          req.headers.get("accept-encoding") || ""
         );
       },
       "load.js": async () => {
@@ -39,46 +33,16 @@ export const _ = {
           ? JSON.stringify(req.query_parameters["url"])
           : "undefined";
 
-        if (!cache.dev) {
-          cache.dev = `\
-(() => {
-  const baseurl = new URL(location.href);
-  baseurl.pathname = '';
-  const url = ${url} || baseurl.toString();
-  const w = window;
-  if (!w.prasiApi) {
-    w.prasiApi = {};
-  }
-  w.prasiApi[url] = {
-    apiEntry: ${JSON.stringify(getApiEntry())},
-    apiTypes: ${JSON.stringify((await getApiTypes()) || "")},
-    prismaTypes: {
-      "prisma.d.ts": ${await getPrisma("prisma")},
-      "runtime/index.d.ts": ${await getPrisma("runtime")},
-      "runtime/library.d.ts": ${await getPrisma("library")},
-    },
-  };
-})();`;
-
-          cache.prod = `\
-(() => {
-  const baseurl = new URL(location.href);
-  baseurl.pathname = '';
-  const url = ${url} || baseurl.toString();
-  const w = window;
-  if (!w.prasiApi) {
-    w.prasiApi = {};
-  }
-  w.prasiApi[url] = {
-    apiEntry: ${JSON.stringify(getApiEntry())},
-  };
-})();`;
-        }
-
         if (req.query_parameters["dev"]) {
-          res.send(cache.dev);
+          res.send(
+            await getContent("load.js.dev", url),
+            req.headers.get("accept-encoding") || ""
+          );
         } else {
-          res.send(cache.prod);
+          res.send(
+            await getContent("load.js.prod", url),
+            req.headers.get("accept-encoding") || ""
+          );
         }
       },
     };
@@ -100,6 +64,58 @@ export const getApiEntry = () => {
   }
 
   return res;
+};
+
+const getContent = async (type: keyof typeof generated, url?: string) => {
+  if (type === "load.json") {
+    if (!generated[type])
+      generated[type] = JSON.stringify({
+        apiEntry: getApiEntry(),
+        apiTypes: (await getApiTypes()) || "",
+        prismaTypes: {
+          "prisma.d.ts": await getPrisma("prisma"),
+          "runtime/index.d.ts": await getPrisma("runtime"),
+          "runtime/library.d.ts": await getPrisma("library"),
+        },
+      });
+  } else if (type === "load.js.dev") {
+    if (!generated[type])
+      generated[type] = `\
+(() => {
+  const baseurl = new URL(location.href);
+  baseurl.pathname = '';
+  const url = ${url} || baseurl.toString();
+  const w = window;
+  if (!w.prasiApi) {
+    w.prasiApi = {};
+  }
+  w.prasiApi[url] = {
+    apiEntry: ${JSON.stringify(getApiEntry())},
+    apiTypes: ${JSON.stringify((await getApiTypes()) || "")},
+    prismaTypes: {
+      "prisma.d.ts": ${await getPrisma("prisma")},
+      "runtime/index.d.ts": ${await getPrisma("runtime")},
+      "runtime/library.d.ts": ${await getPrisma("library")},
+    },
+  };
+})();`;
+  } else if (type === "load.js.prod") {
+    if (!generated[type])
+      generated[type] = `\
+(() => {
+  const baseurl = new URL(location.href);
+  baseurl.pathname = '';
+  const url = ${url} || baseurl.toString();
+  const w = window;
+  if (!w.prasiApi) {
+    w.prasiApi = {};
+  }
+  w.prasiApi[url] = {
+    apiEntry: ${JSON.stringify(getApiEntry())},
+  });
+})();`;
+  }
+  return generated[type];
 };
 
 const getApiTypes = async () => {

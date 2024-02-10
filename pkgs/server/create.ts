@@ -60,56 +60,19 @@ export const createServer = async () => {
     async fetch(req) {
       const url = new URL(req.url);
 
-      const web = await serveWeb(url, req);
-      let index = ["", ""];
-      if (web) {
-        if (Array.isArray(web)) index = web;
-        else {
-          return web;
-        }
-      }
-
-      const api = await serveAPI(url, req);
-      if (api) {
-        return api;
-      }
-
-      if (index) {
-        let status: any = {};
-
-        if (!["", "index.html"].includes(trim(url.pathname, " /"))) {
-          status = {
-            status: 404,
-            statusText: "Not Found",
-          };
+      const handle = async (req: Request) => {
+        const api = await serveAPI(url, req);
+        if (api) {
+          return api;
         }
 
-        const [site_id, body] = index;
-        if (g.web[site_id]) {
-          const router = g.web[site_id].router;
-          if (router) {
-            let found = router.lookup(url.pathname);
-            if (!found) {
-              found = router.lookup(url.pathname + "/");
-            }
-            if (found) {
-              status = {};
-            }
-          }
-        }
-
-        return new Response(body, {
-          ...status,
-          headers: {
-            "content-type": "text/html",
-          },
+        return new Response(`404 Not Found`, {
+          status: 404,
+          statusText: "Not Found",
         });
-      }
+      };
 
-      return new Response(`404 Not Found`, {
-        status: 404,
-        statusText: "Not Found",
-      });
+      return handle(req);
     },
   });
 
