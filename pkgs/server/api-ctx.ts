@@ -1,4 +1,6 @@
 import { gzipSync } from "bun";
+import brotliPromise from "brotli-wasm"; // Import the default export
+const brotli = await brotliPromise;
 
 const parseQueryParams = (ctx: any) => {
   const pageHref = ctx.req.url;
@@ -36,7 +38,11 @@ export const apiContext = (ctx: any) => {
   };
 };
 
-const cache = { gz: {} as Record<string, Uint8Array> };
+const cache = {
+  gz: {} as Record<string, Uint8Array>,
+  br: {} as Record<string, Uint8Array>,
+  br_timeout: new Set<string>(),
+};
 
 export const createResponse = (
   existingRes: any,
@@ -48,15 +54,35 @@ export const createResponse = (
 
   let content: any = typeof body === "string" ? body : JSON.stringify(body);
   const headers = {} as Record<string, string>;
-  if (cache_accept && cache_accept.toLowerCase().includes("gz")) {
+  if (cache_accept) {
     const content_hash = simpleHash(content);
-    if (content_hash) {
-      content = cache.gz[content_hash];
-    } else {
-      cache.gz[content_hash] = gzipSync(content);
-      content = cache.gz[content_hash];
+    if (cache_accept.toLowerCase().includes("br")) {
+      if (cache.br[content_hash]) {
+        content = cache.br[content_hash];
+      } else {
+        if (!cache.br_timeout.has(content_hash)) {
+          cache.br_timeout.add(content_hash);
+          setTimeout(() => {
+            cache.br[content_hash] = brotli.compress(Buffer.from(content));
+            cache.br_timeout.delete(content_hash);
+          });
+        }
+      }
+      headers["content-encoding"] = "br";
     }
-    headers["content-encoding"] = "gz";
+
+    if (
+      cache_accept.toLowerCase().includes("gz") &&
+      !headers["content-encoding"]
+    ) {
+      if (cache.gz[content_hash]) {
+        content = cache.gz[content_hash];
+      } else {
+        cache.gz[content_hash] = gzipSync(content);
+        content = cache.gz[content_hash];
+      }
+      headers["content-encoding"] = "gzip";
+    }
   }
 
   let res = new Response(

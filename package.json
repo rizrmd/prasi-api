@@ -19,8 +19,9 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "brotli-wasm": "^2.0.1",
     "exit-hook": "^4.0.0",
-    "prisma": "^5.8.1",
-    "firebase-admin": "^11.11.0"
+    "firebase-admin": "^11.11.0",
+    "prisma": "^5.8.1"
   }
 }

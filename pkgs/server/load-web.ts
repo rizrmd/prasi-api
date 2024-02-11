@@ -12,48 +12,12 @@ import { gunzipSync } from "zlib";
 import { downloadFile } from "../api/_deploy";
 import { dir } from "../utils/dir";
 import { g } from "../utils/global";
+const decoder = new TextDecoder();
 
 export const loadWeb = async () => {
   await dirAsync(dir(`app/static`));
-  const siteZip = `${
-    g.mode === "dev" ? "http://localhost:4550" : "https://prasi.app"
-  }/site-bundle`;
-  const zipPath = dir(`app/static/site.zip`);
-  const md5Path = dir(`app/static/md5`);
-
-  if (!(await file(zipPath).exists()) || !(await file(md5Path).exists())) {
-    const md5 = await fetch(`${siteZip}/md5`);
-    await writeAsync(md5Path, await md5.text());
-    await new Promise<void>((r) => setTimeout(r, 1000));
-    await downloadFile(`${siteZip}/download`, zipPath);
-    await removeAsync(dir(`app/static/site`));
-    await $({ cwd: dir(`app/static`) })`unzip site.zip`;
-  } else {
-    const md5 = await fetch(`${siteZip}/md5`);
-    const md5txt = await md5.text();
-
-    if (md5txt !== (await readAsync(md5Path))) {
-      const e = await fetch(`${siteZip}/download`);
-      await removeAsync(dir(`app/static`));
-      await dirAsync(dir(`app/static`));
-      await downloadFile(`${siteZip}/download`, zipPath);
-      await writeAsync(md5Path, md5txt);
-      await $({ cwd: dir(`app/static`) })`unzip site.zip`;
-    }
-  }
-
-  const list = await inspectTreeAsync(dir(`app/web`));
-  for (const web of list?.children || []) {
-    if (web.type === "file") continue;
-
-    const deploy = web.children?.find((e) => e.name === "deploys");
-    if (!deploy) {
-      await dirAsync(dir(`app/web/${web.name}/deploys`));
-    }
-  }
 };
 
-const decoder = new TextDecoder();
 export const loadWebCache = async (site_id: string, ts: number | string) => {
   const web = g.web;
   if (web) {
