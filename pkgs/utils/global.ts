@@ -39,4 +39,32 @@ export const g = global as unknown as {
     js: string;
     etag: string;
   };
+  deploy: {
+    init: boolean;
+    raw: any;
+    router: RadixRouter<{ url: string; id: string }>;
+    layout: null | any;
+    comps: Record<string, any>;
+    gz: null | {
+      layouts: {
+        id: string;
+        url: string;
+        name: true;
+        content_tree: any;
+        is_default_layout: true;
+      }[];
+      pages: { id: string; url: string; name: true; content_tree: any }[];
+      site: {};
+      comps: { id: string; content_tree: true }[];
+      code: {
+        server: Record<string, string>;
+        site: Record<string, string>;
+        core: Record<string, string>;
+      };
+    };
+    config: {
+      site_id: string;
+      deploy: { ts: string };
+    };
+  };
 };

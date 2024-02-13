@@ -1,13 +1,11 @@
+import { file } from "bun";
 import { inspectAsync, listAsync } from "fs-jetpack";
 import { join } from "path";
 import { createRouter } from "radix3";
+import { dir } from "../utils/dir";
 import { g } from "../utils/global";
 import { parseArgs } from "./parse-args";
 import { serveAPI } from "./serve-api";
-import { serveWeb } from "./serve-web";
-import { dir } from "../utils/dir";
-import { file } from "bun";
-import { trim } from "radash";
 
 export const createServer = async () => {
   g.router = createRouter({ strictTrailingSlash: true });
@@ -71,6 +69,9 @@ export const createServer = async () => {
           statusText: "Not Found",
         });
       };
+
+      if (g.deploy.gz?.code.server) {
+      }
 
       return handle(req);
     },

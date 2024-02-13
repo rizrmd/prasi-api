@@ -2,62 +2,8 @@ import { statSync } from "fs";
 import { join } from "path";
 import { dir } from "utils/dir";
 
-const index = {
-  html: "",
-  css: {
-    src: null as any,
-    encoding: "",
-  },
-  isFile: {} as Record<string, boolean>,
-};
-
 export const serveWeb = async (url: URL, req: Request) => {
-  let site_id = "";
-
-  if (!site_id) {
-    return false;
-  }
-
-  const base = dir(`app/static/site`);
-
-  let path = join(base, url.pathname);
-
-  if (url.pathname === "/site_id") {
-    return new Response(site_id);
-  }
-
-  if (url.pathname.startsWith("/index.css")) {
-    if (!index.css.src) {
-      const res = await fetch("https://prasi.app/index.css");
-      index.css.src = await res.arrayBuffer();
-      index.css.encoding = res.headers.get("content-encoding") || "";
-    }
-
-    return new Response(index.css.src, {
-      headers: {
-        "content-type": "text/css",
-        "content-encoding": index.css.encoding,
-      },
-    });
-  }
-
-  try {
-    if (typeof index.isFile[path] === "undefined") {
-      const s = statSync(path);
-      if (s.isFile()) {
-        index.isFile[path] = true;
-        return new Response(Bun.file(path));
-      }
-    } else if (index.isFile[path]) {
-      return new Response(Bun.file(path));
-    }
-  } catch (e) {}
-
-  if (!index.html) {
-    index.html = generateIndexHtml("", site_id);
-  }
-
-  return { site_id, index: index.html };
+  return {};
 };
 
 export const generateIndexHtml = (base_url: string, site_id: string) => {

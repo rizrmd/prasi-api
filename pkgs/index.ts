@@ -1,16 +1,16 @@
+import { $ } from "execa";
+import { dirAsync, existsAsync } from "fs-jetpack";
+import { deploy } from "utils/deploy";
 import { startDevWatcher } from "utils/dev-watcher";
+import { dir } from "utils/dir";
 import { ensureNotRunning } from "utils/ensure";
 import { preparePrisma } from "utils/prisma";
 import { generateAPIFrm } from "./server/api-frm";
 import { createServer } from "./server/create";
-import { loadWeb } from "./server/load-web";
 import { prepareAPITypes } from "./server/prep-api-ts";
 import { config } from "./utils/config";
 import { g } from "./utils/global";
 import { createLogger } from "./utils/logger";
-import { dirAsync, existsAsync } from "fs-jetpack";
-import { dir } from "utils/dir";
-import { $ } from "execa";
 
 g.mode = process.argv.includes("dev") ? "dev" : "prod";
 g.datadir = g.mode === "prod" ? "../data" : ".data";
@@ -44,9 +44,10 @@ if (g.db) {
 
 await config.init();
 
-await loadWeb();
-
 g.log.info(g.mode === "dev" ? "DEVELOPMENT" : "PRODUCTION");
+
+
+await deploy.init();
 if (g.mode === "dev") {
   await startDevWatcher();
 }

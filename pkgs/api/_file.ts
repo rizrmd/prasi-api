@@ -11,37 +11,6 @@ export const _ = {
     const rpath = decodeURIComponent(req.params._);
 
     let res = new Response("NOT FOUND", { status: 404 });
-    try {
-      if (rpath.startsWith("site")) {
-        if (rpath === "site-html") {
-          res = new Response(generateIndexHtml("[[base_url]]", "[[site_id]]"));
-        }
-        if (rpath === "site-zip") {
-          const path = dir(`app/static/site.zip`);
-          res = new Response(Bun.file(path));
-        }
-        if (rpath === "site-md5") {
-          const path = dir(`app/static/md5`);
-          res = new Response(Bun.file(path));
-        }
-      } else if (rpath.startsWith("current-")) {
-        if (rpath.startsWith("current-md5-")) {
-          const site_id = rpath.substring("current-md5-".length);
-          const path = dir(`app/web/${site_id}/current`);
-          res = new Response(Bun.file(path));
-        } else {
-          const site_id = rpath.substring("current-".length);
-          const path = dir(`app/web/${site_id}/current`);
-          const id = await Bun.file(path).text();
-          if (id) {
-            const path = dir(`app/web/${site_id}/deploys/${id}`);
-            res = new Response(Bun.file(path));
-          }
-        }
-      }
-    } catch (e) {
-      res = new Response("NOT FOUND", { status: 404 });
-    }
 
     const path = dir(`${g.datadir}/upload/${rpath}`);
     const file = Bun.file(path);

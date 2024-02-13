@@ -5,7 +5,7 @@ import { apiContext } from "service-srv";
 import { dir } from "utils/dir";
 import { g } from "utils/global";
 import { restartServer } from "utils/restart";
-import { loadWebCache } from "../server/load-web";
+
 export const _ = {
   url: "/_deploy",
   async api(
@@ -35,8 +35,6 @@ export const _ = {
       case "check":
         return {
           now: Date.now(),
-          current: web.current,
-          deploys: web.deploys,
           db: {
             url: g.dburl || "-",
           },
@@ -121,7 +119,6 @@ datasource db {
             await fs.promises.writeFile(`${path}/current`, cur.toString());
             web.current = cur;
             web.deploys.push(cur);
-            await loadWebCache(web.site_id, web.current);
           }
           web.deploying = null;
 
@@ -140,7 +137,6 @@ datasource db {
             if (web.deploys.find((e) => e === cur)) {
               web.current = cur;
               await fs.promises.writeFile(`${path}/current`, cur.toString());
-              await loadWebCache(web.site_id, web.current);
             }
           } catch (e) {
             web.current = lastcur;

@@ -5,8 +5,10 @@ import { g } from "./global";
 
 export const preparePrisma = async () => {
   if (await existsAsync(dir("app/db/.env"))) {
-    await $({ cwd: dir(`app/db`) })`bun prisma db pull`;
-    await $({ cwd: dir(`app/db`) })`bun prisma generate`;
+    if (g.mode !== "dev") {
+      await $({ cwd: dir(`app/db`) })`bun prisma db pull`;
+      await $({ cwd: dir(`app/db`) })`bun prisma generate`;
+    }
     try {
       const { PrismaClient } = await import("../../app/db/db");
       g.db = new PrismaClient();
