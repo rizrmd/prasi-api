@@ -35,6 +35,8 @@ export const _ = {
       case "check":
         return {
           now: Date.now(),
+          current: 0,
+          deploys: [],
           db: {
             url: g.dburl || "-",
           },
