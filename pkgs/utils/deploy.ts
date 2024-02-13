@@ -93,8 +93,11 @@ export const deploy = {
     if (!g.deploy.init) {
       g.deploy.init = true;
       g.deploy.raw = read(dir(`app/web/config.json`), "json");
-      for (const [k, v] of Object.entries(g.deploy.raw)) {
-        (g.deploy.config as any)[k] = v;
+
+      if (g.deploy.raw) {
+        for (const [k, v] of Object.entries(g.deploy.raw)) {
+          (g.deploy.config as any)[k] = v;
+        }
       }
     }
 
