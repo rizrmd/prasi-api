@@ -101,6 +101,9 @@ datasource db {
         break;
       case "deploy":
         {
+          deploy.config.site_id = action.id_site;
+
+          await deploy.saveConfig();
           deploy.config.deploy.ts = Date.now() + "";
           await deploy.init();
           const deploys = fs.readdirSync(dir(`/app/web/deploy`));
