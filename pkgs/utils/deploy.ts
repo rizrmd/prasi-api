@@ -86,7 +86,9 @@ export const deploy = {
     console.log(
       `Downloading site deploy: ${this.config.site_id} [ts: ${this.config.deploy.ts}]`
     );
-    const res = await fetch(`${base_url}/prod-zip/${this.config.site_id}`);
+    const res = await fetch(
+      `${base_url}/prod-zip/${this.config.site_id}?ts=${Date.now()}`
+    );
     const ts = Date.now();
 
     const file = Bun.file(dir(`app/web/deploy/${ts}.gz`));

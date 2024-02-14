@@ -69,30 +69,42 @@ export const createServer = async () => {
           return api;
         }
 
-        if (g.deploy.gz && g.deploy.index) {
-          const core = g.deploy.gz.code.core;
-          const site = g.deploy.gz.code.site;
-
-          let pathname = url.pathname;
-          if (url.pathname[0] === "/") pathname = pathname.substring(1);
-
-          if (
-            !pathname ||
-            pathname === "index.html" ||
-            pathname === "index.htm"
-          ) {
-            return await serveWeb({
-              content: g.deploy.index.render(),
-              pathname: "index.html",
-            });
+        if (g.deploy.index) {
+          if (g.deploy.router) {
+            const found = g.deploy.router.lookup(url.pathname);
+            if (found) {
+              return await serveWeb({
+                content: g.deploy.index.render(),
+                pathname: "index.html",
+              });
+            }
           }
 
-          let content = "";
-          if (core[pathname]) content = core[pathname];
-          else if (site[pathname]) content = site[pathname];
+          if (g.deploy.gz) {
+            const core = g.deploy.gz.code.core;
+            const site = g.deploy.gz.code.site;
 
-          if (content) {
-            return await serveWeb({ content, pathname });
+            let pathname = url.pathname;
+            if (url.pathname[0] === "/") pathname = pathname.substring(1);
+
+            if (
+              !pathname ||
+              pathname === "index.html" ||
+              pathname === "index.htm"
+            ) {
+              return await serveWeb({
+                content: g.deploy.index.render(),
+                pathname: "index.html",
+              });
+            }
+
+            let content = "";
+            if (core[pathname]) content = core[pathname];
+            else if (site[pathname]) content = site[pathname];
+
+            if (content) {
+              return await serveWeb({ content, pathname });
+            }
           }
         }
 
