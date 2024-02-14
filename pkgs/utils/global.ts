@@ -1,16 +1,29 @@
-import { Server } from "bun";
+import { Server, WebSocketHandler } from "bun";
 import { Logger } from "pino";
 import { RadixRouter } from "radix3";
 import { PrismaClient } from "../../app/db/db";
 
 import admin from "firebase-admin";
 import { Database } from "bun:sqlite";
+import { prodIndex } from "./prod-index";
 
 type SingleRoute = {
   url: string;
   args: string[];
   fn: (...arg: any[]) => Promise<any>;
   path: string;
+};
+
+type PrasiServer = {
+  ws?: WebSocketHandler<{ url: string }>;
+  http: (arg: {
+    url: { raw: URL; pathname: string };
+    req: Request;
+    server: Server;
+    mode: "dev" | "prod";
+    handle: (req: Request) => Promise<Response>;
+    index: { head: string[]; body: string[]; render: () => string };
+  }) => Promise<Response>;
 };
 
 export const g = global as unknown as {
@@ -39,12 +52,20 @@ export const g = global as unknown as {
     js: string;
     etag: string;
   };
+  cache: {
+    br: Record<string, Uint8Array>;
+    br_timeout: Set<string>;
+  };
   deploy: {
     init: boolean;
     raw: any;
-    router: RadixRouter<{ url: string; id: string }>;
+    router?: RadixRouter<{ url: string; id: string }>;
     layout: null | any;
     comps: Record<string, any>;
+    pages: Record<
+      string,
+      { id: string; url: string; name: true; content_tree: any }
+    >;
     gz: null | {
       layouts: {
         id: string;
@@ -66,5 +87,7 @@ export const g = global as unknown as {
       site_id: string;
       deploy: { ts: string };
     };
+    server: PrasiServer | null;
+    index: ReturnType<typeof prodIndex> | null;
   };
 };

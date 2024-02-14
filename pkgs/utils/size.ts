@@ -1,6 +1,4 @@
-const decoder = new TextDecoder();
-
-function humanFileSize(bytes: any, si = false, dp = 1) {
+export function humanFileSize(bytes: any, si = false, dp = 1) {
   const thresh = si ? 1000 : 1024;
 
   if (Math.abs(bytes) < thresh) {

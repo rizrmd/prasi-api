@@ -2,6 +2,7 @@ import { $ } from "execa";
 import * as fs from "fs";
 import { dirAsync, removeAsync, writeAsync } from "fs-jetpack";
 import { apiContext } from "service-srv";
+import { deploy } from "utils/deploy";
 import { dir } from "utils/dir";
 import { g } from "utils/global";
 import { restartServer } from "utils/restart";
@@ -29,14 +30,14 @@ export const _ = {
     const path = dir(`app/web/`);
     await dirAsync(path);
 
-    const web = g.web;
-
     switch (action.type) {
       case "check":
+        const deploys = fs.readdirSync(dir(`/app/web/deploy`));
+
         return {
           now: Date.now(),
-          current: 0,
-          deploys: [],
+          current: parseInt(g.deploy.config.deploy.ts),
+          deploys: deploys.map((e) => parseInt(e.replace(".gz", ""))),
           db: {
             url: g.dburl || "-",
           },
@@ -66,6 +67,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }`
           );
+
           await $({ cwd: dir("app/db") })`bun install`;
           await $({ cwd: dir("app/db") })`bun prisma db pull`;
           await $({ cwd: dir("app/db") })`bun prisma generate`;
@@ -85,14 +87,13 @@ datasource db {
         break;
       case "deploy-del":
         {
-          web.deploys = web.deploys.filter((e) => e !== parseInt(action.ts));
-          try {
-            await removeAsync(`${path}/deploys/${action.ts}`);
-          } catch (e) {}
+          await removeAsync(dir(`/app/web/deploy/${action.ts}.gz`));
+          const deploys = fs.readdirSync(dir(`/app/web/deploy`));
+
           return {
             now: Date.now(),
-            current: web.current,
-            deploys: web.deploys,
+            current: parseInt(deploy.config.deploy.ts),
+            deploys: deploys.map((e) => parseInt(e.replace(".gz", ""))),
           };
         }
         break;
@@ -100,56 +101,28 @@ datasource db {
         break;
       case "deploy":
         {
-          await fs.promises.mkdir(`${path}/deploys`, { recursive: true });
-          const cur = Date.now();
-          const filePath = `${path}/deploys/${cur}`;
-          web.deploying = {
-            status: "generating",
-            received: 0,
-            total: 0,
-          };
-          if (
-            await downloadFile(action.dlurl, filePath, (rec, total) => {
-              web.deploying = {
-                status: "transfering",
-                received: rec,
-                total: total,
-              };
-            })
-          ) {
-            web.deploying.status = "deploying";
-            await fs.promises.writeFile(`${path}/current`, cur.toString());
-            web.current = cur;
-            web.deploys.push(cur);
-          }
-          web.deploying = null;
+          deploy.config.deploy.ts = Date.now() + "";
+          await deploy.init();
+          const deploys = fs.readdirSync(dir(`/app/web/deploy`));
 
           return {
             now: Date.now(),
-            current: web.current,
-            deploys: web.deploys,
+            current: parseInt(deploy.config.deploy.ts),
+            deploys: deploys.map((e) => parseInt(e.replace(".gz", ""))),
           };
         }
         break;
       case "redeploy":
         {
-          const cur = parseInt(action.ts);
-          const lastcur = web.current;
-          try {
-            if (web.deploys.find((e) => e === cur)) {
-              web.current = cur;
-              await fs.promises.writeFile(`${path}/current`, cur.toString());
-            }
-          } catch (e) {
-            web.current = lastcur;
-            web.deploys = web.deploys.filter((e) => e !== parseInt(action.ts));
-            await removeAsync(`${path}/deploys/${action.ts}`);
-          }
+          deploy.config.deploy.ts = action.ts;
+          await deploy.saveConfig();
+          await deploy.load(action.ts);
+          const deploys = fs.readdirSync(dir(`/app/web/deploy`));
 
           return {
             now: Date.now(),
-            current: web.current,
-            deploys: web.deploys,
+            current: parseInt(deploy.config.deploy.ts),
+            deploys: deploys.map((e) => parseInt(e.replace(".gz", ""))),
           };
         }
         break;

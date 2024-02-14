@@ -2,6 +2,7 @@ import { readAsync } from "fs-jetpack";
 import { apiContext } from "service-srv";
 import { g } from "utils/global";
 import { dir } from "utils/dir";
+import { gzipAsync } from "utils/gzip";
 
 const generated = {
   "load.json": "",
@@ -14,10 +15,82 @@ export const _ = {
   async api() {
     const { req, res } = apiContext(this);
     res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Headers", "content-type");
+    const gz = g.deploy.gz;
+    const parts = req.params._.split("/");
 
     const action = {
       _: () => {
         res.send({ prasi: "v2" });
+      },
+      route: async () => {
+        if (gz) {
+          let layout = null as any;
+          for (const l of gz.layouts) {
+            if (!layout) layout = l;
+            if (l.is_default_layout) layout = l;
+          }
+
+          const result = await gzipAsync(
+            JSON.stringify({
+              site: { ...gz.site, api_url: (gz.site as any)?.config?.api_url },
+              urls: gz.pages.map((e) => {
+                return { id: e.id, url: e.url };
+              }),
+              layout,
+            })
+          );
+
+          return new Response(result, { headers: res.headers });
+        }
+      },
+      page: async () => {
+        const page = g.deploy.pages[parts[1]];
+        if (page) {
+          const result = await gzipAsync(
+            JSON.stringify({
+              id: page.id,
+              root: page.content_tree,
+              url: page.url,
+            })
+          );
+
+          return new Response(result, { headers: res.headers });
+        }
+      },
+      pages: async () => {
+        const pages = [];
+        if (req.params.ids) {
+          for (const id of req.params.ids) {
+            const page = g.deploy.pages[id];
+            if (page) {
+              pages.push({
+                id: page.id,
+                root: page.content_tree,
+                url: page.url,
+              });
+            }
+          }
+        }
+
+        return new Response(await gzipAsync(JSON.stringify(pages)), {
+          headers: res.headers,
+        });
+      },
+      comp: async () => {
+        const comps = {} as Record<string, any>;
+        if (req.params.ids) {
+          for (const id of req.params.ids) {
+            const comp = g.deploy.comps[id];
+            if (comp) {
+              comps[id] = comp;
+            }
+          }
+        }
+
+        return new Response(await gzipAsync(JSON.stringify(comps)), {
+          headers: res.headers,
+        });
       },
       "load.json": async () => {
         res.setHeader("content-type", "application/json");
@@ -47,11 +120,11 @@ export const _ = {
       },
     };
 
-    const pathname: keyof typeof action = req.params._.split("/")[0] as any;
+    const pathname: keyof typeof action = parts[0] as any;
     const run = action[pathname];
 
     if (run) {
-      await run();
+      return await run();
     }
   },
 };
@@ -112,7 +185,7 @@ const getContent = async (type: keyof typeof generated, url?: string) => {
   }
   w.prasiApi[url] = {
     apiEntry: ${JSON.stringify(getApiEntry())},
-  });
+  }
 })();`;
   }
   return generated[type];

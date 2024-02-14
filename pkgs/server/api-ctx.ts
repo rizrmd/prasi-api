@@ -1,5 +1,6 @@
-import { gzipSync } from "bun";
 import brotliPromise from "brotli-wasm"; // Import the default export
+import { simpleHash } from "utils/cache";
+import { g } from "utils/global";
 const brotli = await brotliPromise;
 
 const parseQueryParams = (ctx: any) => {
@@ -38,12 +39,6 @@ export const apiContext = (ctx: any) => {
   };
 };
 
-const cache = {
-  gz: {} as Record<string, Uint8Array>,
-  br: {} as Record<string, Uint8Array>,
-  br_timeout: new Set<string>(),
-};
-
 export const createResponse = (
   existingRes: any,
   body: any,
@@ -57,31 +52,18 @@ export const createResponse = (
   if (cache_accept) {
     const content_hash = simpleHash(content);
     if (cache_accept.toLowerCase().includes("br")) {
-      if (cache.br[content_hash]) {
-        content = cache.br[content_hash];
+      if (g.cache.br[content_hash]) {
+        content = g.cache.br[content_hash];
+        headers["content-encoding"] = "br";
       } else {
-        if (!cache.br_timeout.has(content_hash)) {
-          cache.br_timeout.add(content_hash);
+        if (!g.cache.br_timeout.has(content_hash)) {
+          g.cache.br_timeout.add(content_hash);
           setTimeout(() => {
-            cache.br[content_hash] = brotli.compress(Buffer.from(content));
-            cache.br_timeout.delete(content_hash);
+            g.cache.br[content_hash] = brotli.compress(Buffer.from(content));
+            g.cache.br_timeout.delete(content_hash);
           });
         }
       }
-      headers["content-encoding"] = "br";
-    }
-
-    if (
-      cache_accept.toLowerCase().includes("gz") &&
-      !headers["content-encoding"]
-    ) {
-      if (cache.gz[content_hash]) {
-        content = cache.gz[content_hash];
-      } else {
-        cache.gz[content_hash] = gzipSync(content);
-        content = cache.gz[content_hash];
-      }
-      headers["content-encoding"] = "gzip";
     }
   }
 
@@ -94,33 +76,17 @@ export const createResponse = (
       : undefined
   );
 
-  if (typeof body === "object") {
-    res.headers.append("content-type", "application/json");
-  }
   for (const [k, v] of Object.entries(headers)) {
     res.headers.append(k, v);
   }
-
   const cur = existingRes as Response;
   cur.headers.forEach((value, key) => {
     res.headers.append(key, value);
   });
 
-  return res;
-};
-
-export const simpleHash = (str: string, seed = 0) => {
-  let h1 = 0xdeadbeef ^ seed,
-    h2 = 0x41c6ce57 ^ seed;
-  for (let i = 0, ch; i < str.length; i++) {
-    ch = str.charCodeAt(i);
-    h1 = Math.imul(h1 ^ ch, 2654435761);
-    h2 = Math.imul(h2 ^ ch, 1597334677);
+  if (typeof body === "object" && !res.headers.has("content-type")) {
+    res.headers.append("content-type", "application/json");
   }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
-  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
-  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
 
-  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString();
+  return res;
 };

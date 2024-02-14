@@ -1,8 +1,9 @@
-import { dirAsync, read } from "fs-jetpack";
+import { dirAsync, read, removeAsync, writeAsync } from "fs-jetpack";
 import { dir } from "./dir";
 import { g } from "./global";
 import { gunzipAsync } from "./gzip";
 import { createRouter } from "radix3";
+import { prodIndex } from "./prod-index";
 
 const decoder = new TextDecoder();
 export const deploy = {
@@ -29,6 +30,8 @@ export const deploy = {
         )
       );
 
+      g.deploy.index = prodIndex(this.config.site_id);
+
       if (g.deploy.gz) {
         for (const page of g.deploy.gz.layouts) {
           if (page.is_default_layout) {
@@ -41,13 +44,28 @@ export const deploy = {
         }
 
         g.deploy.router = createRouter();
+        g.deploy.pages = {};
         for (const page of g.deploy.gz.pages) {
+          g.deploy.pages[page.id] = page;
           g.deploy.router.insert(page.url, page);
         }
 
         g.deploy.comps = {};
         for (const comp of g.deploy.gz.comps) {
           g.deploy.comps[comp.id] = comp.content_tree;
+        }
+
+        if (g.deploy.gz.code.server) {
+          setTimeout(async () => {
+            if (g.deploy.gz) {
+              delete require.cache[dir(`app/web/server/index.js`)];
+              await removeAsync(dir(`app/web/server`));
+              await dirAsync(dir(`app/web/server`));
+              for (const [k, v] of Object.entries(g.deploy.gz.code.server)) {
+                await writeAsync(dir(`app/web/server/${k}`), v);
+              }
+            }
+          }, 300);
         }
       }
     } catch (e) {
@@ -82,11 +100,14 @@ export const deploy = {
       g.deploy = {
         comps: {},
         layout: null,
+        pages: {},
         router: createRouter(),
         config: { deploy: { ts: "" }, site_id: "" },
         init: false,
         raw: null,
-        gz: null as any,
+        gz: null,
+        server: null,
+        index: null,
       };
     }
 

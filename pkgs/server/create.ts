@@ -1,15 +1,20 @@
 import { file } from "bun";
-import { inspectAsync, listAsync } from "fs-jetpack";
+import { existsAsync, inspectAsync, listAsync } from "fs-jetpack";
 import { join } from "path";
 import { createRouter } from "radix3";
 import { dir } from "../utils/dir";
 import { g } from "../utils/global";
 import { parseArgs } from "./parse-args";
 import { serveAPI } from "./serve-api";
+import { serveWeb } from "./serve-web";
 
 export const createServer = async () => {
   g.router = createRouter({ strictTrailingSlash: true });
   g.api = {};
+  g.cache = {
+    br: {},
+    br_timeout: new Set(),
+  };
   const scan = async (path: string, root?: string) => {
     const apis = await listAsync(path);
     if (apis) {
@@ -64,13 +69,59 @@ export const createServer = async () => {
           return api;
         }
 
+        if (g.deploy.gz && g.deploy.index) {
+          const core = g.deploy.gz.code.core;
+          const site = g.deploy.gz.code.site;
+
+          let pathname = url.pathname;
+          if (url.pathname[0] === "/") pathname = pathname.substring(1);
+
+          if (
+            !pathname ||
+            pathname === "index.html" ||
+            pathname === "index.htm"
+          ) {
+            return await serveWeb({
+              content: g.deploy.index.render(),
+              pathname: "index.html",
+            });
+          }
+
+          let content = "";
+          if (core[pathname]) content = core[pathname];
+          else if (site[pathname]) content = site[pathname];
+
+          if (content) {
+            return await serveWeb({ content, pathname });
+          }
+        }
+
         return new Response(`404 Not Found`, {
           status: 404,
           statusText: "Not Found",
         });
       };
 
-      if (g.deploy.gz?.code.server) {
+      if (!url.pathname.startsWith("/_deploy")) {
+        if (
+          !g.deploy.server &&
+          (await existsAsync(dir(`app/web/server/index.js`)))
+        ) {
+          const res = require(dir(`app/web/server/index.js`));
+          if (res && res.server) {
+            g.deploy.server = res.server;
+          }
+        }
+        if (g.deploy.server && g.deploy.index) {
+          return await g.deploy.server.http({
+            handle,
+            mode: "prod",
+            req,
+            server: g.server,
+            url: { pathname: url.pathname, raw: url },
+            index: g.deploy.index,
+          });
+        }
       }
 
       return handle(req);
