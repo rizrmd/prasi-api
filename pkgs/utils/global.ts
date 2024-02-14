@@ -14,6 +14,14 @@ type SingleRoute = {
   path: string;
 };
 
+export type SinglePage = {
+  id: string;
+  url: string;
+  name: true;
+  content_tree: any;
+  is_default_layout: true;
+}
+
 type PrasiServer = {
   ws?: WebSocketHandler<{ url: string }>;
   http: (arg: {
@@ -67,14 +75,8 @@ export const g = global as unknown as {
       { id: string; url: string; name: true; content_tree: any }
     >;
     gz: null | {
-      layouts: {
-        id: string;
-        url: string;
-        name: true;
-        content_tree: any;
-        is_default_layout: true;
-      }[];
-      pages: { id: string; url: string; name: true; content_tree: any }[];
+      layouts: SinglePage[];
+      pages: SinglePage[];
       site: {};
       comps: { id: string; content_tree: true }[];
       code: {

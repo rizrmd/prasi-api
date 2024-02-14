@@ -1,6 +1,6 @@
 import { readAsync } from "fs-jetpack";
 import { apiContext } from "service-srv";
-import { g } from "utils/global";
+import { SinglePage, g } from "utils/global";
 import { dir } from "utils/dir";
 import { gzipAsync } from "utils/gzip";
 
@@ -23,9 +23,20 @@ export const _ = {
       _: () => {
         res.send({ prasi: "v2" });
       },
+      code: async () => {
+        if (gz) {
+          const path = parts.slice(1).join("/");
+          if (gz.code.site[path]) {
+            res.send(
+              gz.code.site[path],
+              req.headers.get("accept-encoding") || ""
+            );
+          }
+        }
+      },
       route: async () => {
         if (gz) {
-          let layout = null as any;
+          let layout = null as null | SinglePage;
           for (const l of gz.layouts) {
             if (!layout) layout = l;
             if (l.is_default_layout) layout = l;
@@ -37,7 +48,10 @@ export const _ = {
               urls: gz.pages.map((e) => {
                 return { id: e.id, url: e.url };
               }),
-              layout,
+              layout: {
+                id: layout?.id,
+                root: layout?.content_tree
+              },  
             })
           );
 
