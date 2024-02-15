@@ -42,7 +42,8 @@ export const _ = {
             if (l.is_default_layout) layout = l;
           }
 
-          const result = await gzipAsync(
+          return await responseCompressed(
+            req,
             JSON.stringify({
               site: { ...gz.site, api_url: (gz.site as any)?.config?.api_url },
               urls: gz.pages.map((e) => {
@@ -50,26 +51,23 @@ export const _ = {
               }),
               layout: {
                 id: layout?.id,
-                root: layout?.content_tree
-              },  
+                root: layout?.content_tree,
+              },
             })
           );
-
-          return new Response(result, { headers: res.headers });
         }
       },
       page: async () => {
         const page = g.deploy.pages[parts[1]];
         if (page) {
-          const result = await gzipAsync(
+          return await responseCompressed(
+            req,
             JSON.stringify({
               id: page.id,
               root: page.content_tree,
               url: page.url,
             })
           );
-
-          return new Response(result, { headers: res.headers });
         }
       },
       pages: async () => {
@@ -87,9 +85,7 @@ export const _ = {
           }
         }
 
-        return new Response(await gzipAsync(JSON.stringify(pages)), {
-          headers: res.headers,
-        });
+        return await responseCompressed(req, JSON.stringify(pages));
       },
       comp: async () => {
         const comps = {} as Record<string, any>;
@@ -102,9 +98,7 @@ export const _ = {
           }
         }
 
-        return new Response(await gzipAsync(JSON.stringify(comps)), {
-          headers: res.headers,
-        });
+        return await responseCompressed(req, JSON.stringify(comps));
       },
       "load.json": async () => {
         res.setHeader("content-type", "application/json");
@@ -243,4 +237,14 @@ const getPrisma = async (path: string) => {
     );
 
   return JSON.stringify({});
+};
+
+const responseCompressed = async (req: Request, body: string) => {
+  if (req.headers.get("accept-encoding")?.includes("gz")) {
+    return new Response(await gzipAsync(body), {
+      headers: { "content-encoding": "gzip" },
+    });
+  }
+
+  return new Response(body);
 };
