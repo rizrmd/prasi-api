@@ -4,7 +4,7 @@ import { $ } from "execa";
 import { g } from "./global";
 
 export const preparePrisma = async () => {
-  if (await existsAsync(dir("app/db/.env"))) {
+  if ((await existsAsync(dir("app/db/.env"))) && !g.db) {
     if (g.mode !== "dev") {
       await $({ cwd: dir(`app/db`) })`bun prisma db pull`;
       await $({ cwd: dir(`app/db`) })`bun prisma generate`;

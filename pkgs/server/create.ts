@@ -58,6 +58,12 @@ export const createServer = async () => {
   await scan(dir(`app/srv/api`));
   await scan(dir(`pkgs/api`));
 
+  g.createServer = (arg) => {
+    return async (site_id: string) => {
+      return arg;
+    };
+  };
+
   g.server = Bun.serve({
     port: g.port,
     async fetch(req) {
@@ -121,18 +127,26 @@ export const createServer = async () => {
         ) {
           const res = require(dir(`app/web/server/index.js`));
           if (res && res.server) {
-            g.deploy.server = res.server;
+            if (typeof res.server === "function") {
+              g.deploy.server = await res.server();
+            } else {
+              g.deploy.server = res.server;
+            }
           }
         }
         if (g.deploy.server && g.deploy.index) {
-          return await g.deploy.server.http({
-            handle,
-            mode: "prod",
-            req,
-            server: g.server,
-            url: { pathname: url.pathname, raw: url },
-            index: g.deploy.index,
-          });
+          try {
+            return await g.deploy.server.http({
+              handle,
+              mode: "prod",
+              req,
+              server: g.server,
+              url: { pathname: url.pathname, raw: url },
+              index: g.deploy.index,
+            });
+          } catch (e) {
+            console.error(e);
+          }
         }
       }
 

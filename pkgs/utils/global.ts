@@ -20,7 +20,7 @@ export type SinglePage = {
   name: true;
   content_tree: any;
   is_default_layout: true;
-}
+};
 
 type PrasiServer = {
   ws?: WebSocketHandler<{ url: string }>;
@@ -64,6 +64,9 @@ export const g = global as unknown as {
     br: Record<string, Uint8Array>;
     br_timeout: Set<string>;
   };
+  createServer: (
+    arg: PrasiServer & { api: any; db: any }
+  ) => (site_id: string) => Promise<PrasiServer & { api: any; db: any }>;
   deploy: {
     init: boolean;
     raw: any;
