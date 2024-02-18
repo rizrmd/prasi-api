@@ -120,7 +120,10 @@ export const createServer = async () => {
         });
       };
 
-      if (!url.pathname.startsWith("/_deploy")) {
+      if (
+        !url.pathname.startsWith("/_deploy") &&
+        !url.pathname.startsWith("/_prasi")
+      ) {
         if (
           !g.deploy.server &&
           (await existsAsync(dir(`app/web/server/index.js`)))
