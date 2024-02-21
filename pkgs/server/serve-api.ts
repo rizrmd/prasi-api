@@ -20,7 +20,7 @@ export const serveAPI = async (url: URL, req: Request) => {
       return params[e];
     });
 
-    if (req.method !== "GET") {
+    if (req.method !== "GET" && !found.raw) {
       if (!req.headers.get("content-type")?.startsWith("multipart/form-data")) {
         try {
           const json = await req.json();

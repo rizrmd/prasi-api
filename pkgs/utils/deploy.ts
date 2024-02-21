@@ -17,7 +17,7 @@ export const deploy = {
     await this.load(this.config.deploy.ts);
   },
   async load(ts: string) {
-    console.log(`Loading site: ${this.config.site_id} [ts: ${ts}]`);
+    console.log(`Loading site: ${this.config.site_id} ${ts}`);
 
     try {
       g.deploy.gz = JSON.parse(

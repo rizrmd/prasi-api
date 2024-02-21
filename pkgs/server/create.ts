@@ -27,6 +27,7 @@ export const createServer = async () => {
             const route = {
               url: api._.url,
               args,
+              raw: !!api._.raw,
               fn: api._.api,
               path: importPath.substring((root || path).length + 1),
             };
@@ -66,6 +67,7 @@ export const createServer = async () => {
 
   g.server = Bun.serve({
     port: g.port,
+    maxRequestBodySize: 1024 * 1024 * 128,
     async fetch(req) {
       const url = new URL(req.url);
 

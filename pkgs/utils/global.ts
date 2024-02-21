@@ -10,6 +10,7 @@ import { prodIndex } from "./prod-index";
 type SingleRoute = {
   url: string;
   args: string[];
+  raw: boolean;
   fn: (...arg: any[]) => Promise<any>;
   path: string;
 };
