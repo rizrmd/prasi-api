@@ -1,3 +1,4 @@
+import { Prisma } from "../../app/db/db";
 
 export type DBArg = {
   db: string;
@@ -15,9 +16,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
     if (action === "query" && table.startsWith("$query")) {
       try {
         const q = params.shift();
-        q.sql = true;
-        Object.freeze(q);
-        return await tableInstance.bind(prisma)(q, ...params);
+        return await tableInstance.bind(prisma)(Prisma.sql(q, ...params));
       } catch (e) {
         console.log(e);
         return e;

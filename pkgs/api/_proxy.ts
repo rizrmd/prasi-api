@@ -1,41 +1,40 @@
-import { g } from "utils/global";
-import { gzipAsync } from "utils/gzip";
+import { apiContext } from "service-srv";
 
 export const _ = {
   url: "/_proxy/*",
-  async api(arg: {
-    url: string;
-    method: "POST" | "GET";
-    headers: any;
-    body: any;
-  }) {
-    const res = await fetch(
-      arg.url,
-      arg.body
-        ? {
-            method: arg.method || "POST",
-            headers: arg.headers,
-            body: arg.body,
-          }
-        : {
-            headers: arg.headers,
-          }
-    );
+  raw: true,
+  async api() {
+    const { req } = apiContext(this);
 
-    let body: any = null;
-    const headers: any = {};
-    res.headers.forEach((v, k) => {
-      headers[k] = v;
-    });
+    try {
+      const url = new URL(decodeURIComponent(req.params["_"]));
+      const body = await req.arrayBuffer();
+      const headers = {} as Record<string, string>;
+      req.headers.forEach((v, k) => {
+        if (k.startsWith("sec-")) return;
+        if (k.startsWith("connection")) return;
+        if (k.startsWith("dnt")) return;
+        if (k.startsWith("host")) return;
+        headers[k] = v;
+      });
 
-    body = await res.arrayBuffer();
-
-    if (headers["content-encoding"] === "gzip") {
-      body = await gzipAsync(new Uint8Array(body));
-    } else {
-      delete headers["content-encoding"];
+      return await fetch(url, {
+        method: req.method || "POST",
+        headers,
+        body,
+      });
+    } catch (e: any) {
+      console.error(e);
+      new Response(
+        JSON.stringify({
+          status: "failed",
+          reason: e.message,
+        }),
+        {
+          status: 403,
+          headers: { "content-type": "application/json" },
+        }
+      );
     }
-
-    return new Response(body, { headers });
   },
 };

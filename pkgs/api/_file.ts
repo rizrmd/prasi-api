@@ -16,14 +16,14 @@ export const _ = {
   async api() {
     const { req } = apiContext(this);
     let rpath = decodeURIComponent(req.params._);
-
-    let res = new Response("NOT FOUND", { status: 404 });
-
     rpath = rpath
       .split("/")
       .map((e) => e.replace(/\.\./gi, ""))
       .filter((e) => !!e)
       .join("/");
+
+    let res = new Response("NOT FOUND", { status: 404 });
+
 
     if (Object.keys(req.query_parameters).length > 0) {
       await dirAsync(dir(`${g.datadir}/files`));
