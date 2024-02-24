@@ -12,6 +12,7 @@ export const _ = {
     let res = new Response("NOT FOUND", { status: 404 });
 
     const w = parseInt(req.query_parameters.w);
+    const format = req.query_parameters.f;
     let force = typeof req.query_parameters.force === "string";
 
     let rpath = decodeURIComponent(req.params._);
@@ -32,17 +33,28 @@ export const _ = {
           return new Response(original);
         }
 
-        const file_name = dir(`${g.datadir}/files/thumb/${w}/${rpath}`);
+        let file_name = dir(`${g.datadir}/files/upload/thumb/${w}/${rpath}`);
         let file = Bun.file(file_name);
         if (!(await file.exists())) {
           await dirAsync(dirname(file_name));
           force = true;
         }
 
+
+        if (format === "jpg" && !file_name.endsWith(".jpg")) {
+          force = true;
+        }
+
         if (force) {
           const img = sharp(await original.arrayBuffer());
-          const out = await img.resize({ width: w, fit: "inside" }).toBuffer();
-          await Bun.write(file_name, out);
+          let out = img.resize({ width: w, fit: "inside" });
+
+          if (format === "jpg" && !file_name.endsWith(".jpg")) {
+            file_name = file_name + ".jpg";
+            out = out.toFormat("jpg");
+          }
+
+          await Bun.write(file_name, await out.toBuffer());
           file = Bun.file(file_name);
         }
 

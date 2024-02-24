@@ -1,5 +1,6 @@
 import mp from "@surfy/multipart-parser";
-import { format, parse } from "path";
+import { dirAsync, existsAsync } from "fs-jetpack";
+import { format, parse, dirname } from "path";
 import { apiContext } from "service-srv";
 import { dir } from "utils/dir";
 import { g } from "utils/global";
@@ -51,6 +52,10 @@ const saveFile = async (
   const pto = parse(to);
   pto.name = pto.name.replace(/[\W_]+/gi, "-");
   to = format(pto);
+
+  if (await existsAsync(dirname(to))) {
+    dirAsync(dirname(to));
+  }
 
   while (await Bun.file(dir(`${g.datadir}/files/${to}`)).exists()) {
     const p = parse(to);

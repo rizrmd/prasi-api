@@ -24,7 +24,6 @@ export const _ = {
 
     let res = new Response("NOT FOUND", { status: 404 });
 
-
     if (Object.keys(req.query_parameters).length > 0) {
       await dirAsync(dir(`${g.datadir}/files`));
       const base_dir = dir(`${g.datadir}/files/${rpath}`);
@@ -51,7 +50,12 @@ export const _ = {
         if (rpath) {
           const base_dir = dir(`${g.datadir}/files/${rpath}`);
           if (await existsAsync(base_dir)) {
-            if ((await readdir(base_dir)).length === 0) {
+            const s = await stat(base_dir);
+            if (s.isDirectory()) {
+              if ((await readdir(base_dir)).length === 0) {
+                await removeAsync(base_dir);
+              }
+            } else {
               await removeAsync(base_dir);
             }
           }
@@ -74,10 +78,11 @@ export const _ = {
           if (await existsAsync(dir(`${g.datadir}/files/${rpath}`))) {
             await renameAsync(dir(`${g.datadir}/files/${rpath}`), rename);
           } else {
-            const target = dir(
-              `${g.datadir}/files/${dirname(rpath)}/${rename}`
-            );
-            await dirAsync(target);
+            console.log(dir(`${g.datadir}/files/${rpath}`))
+            // const target = dir(
+            //   `${g.datadir}/files/${dirname(rpath)}/${rename}`
+            // );
+            // await dirAsync(target);
           }
           newname = `/${dirname(rpath)}/${rename}`;
         }
@@ -108,7 +113,7 @@ export const _ = {
             headers: { "content-type": "application/json" },
           });
         } catch (e) {
-          return new Response(JSON.stringify([]), {
+          return new Response(JSON.stringify(null), {
             headers: { "content-type": "application/json" },
           });
         }
