@@ -78,11 +78,10 @@ export const _ = {
           if (await existsAsync(dir(`${g.datadir}/files/${rpath}`))) {
             await renameAsync(dir(`${g.datadir}/files/${rpath}`), rename);
           } else {
-            console.log(dir(`${g.datadir}/files/${rpath}`))
-            // const target = dir(
-            //   `${g.datadir}/files/${dirname(rpath)}/${rename}`
-            // );
-            // await dirAsync(target);
+            const target = dir(
+              `${g.datadir}/files/${dirname(rpath)}/${rename}`
+            );
+            await dirAsync(target);
           }
           newname = `/${dirname(rpath)}/${rename}`;
         }
