@@ -48,6 +48,11 @@ export const g = global as unknown as {
     db: Database;
   };
   api: Record<string, SingleRoute>;
+  api_gen: {
+    "load.json": string;
+    "load.js.dev": string;
+    "load.js.prod": string;
+  };
   web: {
     site_id: string;
     current: number;

@@ -51,6 +51,7 @@ export const createResponse = (
   const headers = {} as Record<string, string>;
   if (cache_accept) {
     const content_hash = simpleHash(content);
+
     if (cache_accept.toLowerCase().includes("br")) {
       if (g.cache.br[content_hash]) {
         content = g.cache.br[content_hash];
@@ -65,6 +66,13 @@ export const createResponse = (
         }
       }
     }
+
+    // if (!headers["content-encoding"]) {
+    //   if (cache_accept.toLowerCase().includes("gz")) {
+    //     headers["content-encoding"] = "gzip";
+    //     content = gzipSync(content);
+    //   }
+    // }
   }
 
   let res = new Response(
