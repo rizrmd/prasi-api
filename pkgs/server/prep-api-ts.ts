@@ -93,10 +93,6 @@ export const getContent = async (
   } else if (type === "load.js.dev") {
     if (!g.api_gen[type])
       g.api_gen[type] = `\
-(() => {
-  const baseurl = new URL(location.href);
-  baseurl.pathname = '';
-  const url = ${url} || baseurl.toString();
   const w = window;
   if (!w.prasiApi) {
     w.prasiApi = {};
@@ -114,10 +110,6 @@ export const getContent = async (
   } else if (type === "load.js.prod") {
     if (!g.api_gen[type])
       g.api_gen[type] = `\
-(() => {
-  const baseurl = new URL(location.href);
-  baseurl.pathname = '';
-  const url = ${url} || baseurl.toString();
   const w = window;
   if (!w.prasiApi) {
     w.prasiApi = {};
@@ -127,7 +119,12 @@ export const getContent = async (
   }
 })();`;
   }
-  return g.api_gen[type];
+  return `\
+(() => {
+  const baseurl = new URL(location.href);
+  baseurl.pathname = '';
+  const url = ${url} || baseurl.toString();
+${g.api_gen[type]}`;
 };
 
 const getApiTypes = async () => {
