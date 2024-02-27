@@ -1,4 +1,5 @@
 import brotliPromise from "brotli-wasm"; // Import the default export
+import { gzipSync } from "bun";
 import { simpleHash } from "utils/cache";
 import { g } from "utils/global";
 const brotli = await brotliPromise;
@@ -39,6 +40,10 @@ export const apiContext = (ctx: any) => {
   };
 };
 
+(BigInt.prototype as any).toJSON = function (): string {
+  return `BigInt::` + this.toString();
+};
+
 export const createResponse = (
   existingRes: any,
   body: any,
@@ -50,9 +55,9 @@ export const createResponse = (
   let content: any = typeof body === "string" ? body : JSON.stringify(body);
   const headers = {} as Record<string, string>;
   if (cache_accept) {
-    const content_hash = simpleHash(content);
+    if (g.mode === "prod" && cache_accept.toLowerCase().includes("br")) {
+      const content_hash = simpleHash(content);
 
-    if (cache_accept.toLowerCase().includes("br")) {
       if (g.cache.br[content_hash]) {
         content = g.cache.br[content_hash];
         headers["content-encoding"] = "br";
@@ -66,13 +71,6 @@ export const createResponse = (
         }
       }
     }
-
-    // if (!headers["content-encoding"]) {
-    //   if (cache_accept.toLowerCase().includes("gz")) {
-    //     headers["content-encoding"] = "gzip";
-    //     content = gzipSync(content);
-    //   }
-    // }
   }
 
   let res = new Response(
