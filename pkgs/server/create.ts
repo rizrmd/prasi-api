@@ -59,12 +59,6 @@ export const createServer = async () => {
   await scan(dir(`app/srv/api`));
   await scan(dir(`pkgs/api`));
 
-  g.createServer = (arg) => {
-    return async (site_id: string) => {
-      return arg;
-    };
-  };
-
   g.server = Bun.serve({
     port: g.port,
     maxRequestBodySize: 1024 * 1024 * 128,
@@ -131,12 +125,8 @@ export const createServer = async () => {
           (await existsAsync(dir(`app/web/server/index.js`)))
         ) {
           const res = require(dir(`app/web/server/index.js`));
-          if (res && res.server) {
-            if (typeof res.server === "function") {
-              g.deploy.server = await res.server();
-            } else {
-              g.deploy.server = res.server;
-            }
+          if (res && typeof res.server === 'object') {
+            g.deploy.server = res.server;
           }
         }
         if (g.deploy.server && g.deploy.index) {

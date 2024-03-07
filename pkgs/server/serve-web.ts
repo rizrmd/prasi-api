@@ -1,7 +1,5 @@
 import mime from "mime";
 
-
-
 export const serveWeb = async (arg: { pathname: string; content: string }) => {
   const type = mime.getType(arg.pathname);
 

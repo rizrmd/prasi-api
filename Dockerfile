@@ -9,6 +9,8 @@ RUN curl -sL https://deb.nodesource.com/setup_20.x | bash -
 RUN apt-get update
 RUN apt-get install nodejs -yq
 
+RUN PATH="/usr/lib/node_modules/npm/bin:$PATH"
+
 COPY dockerzip .
 RUN unzip -o dockerzip
 RUN bun install
