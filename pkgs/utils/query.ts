@@ -10,6 +10,8 @@ export type DBArg = {
 export const execQuery = async (args: DBArg, prisma: any) => {
   const { table, action, params } = args;
 
+  console.log(args);
+
   const tableInstance = prisma[table];
 
   if (tableInstance) {
