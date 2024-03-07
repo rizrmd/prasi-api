@@ -59,6 +59,12 @@ export const createServer = async () => {
   await scan(dir(`app/srv/api`));
   await scan(dir(`pkgs/api`));
 
+  g.createServer = (arg) => {
+    return async (site_id: string) => {
+      return arg;
+    };
+  };
+  
   g.server = Bun.serve({
     port: g.port,
     maxRequestBodySize: 1024 * 1024 * 128,

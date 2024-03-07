@@ -1,10 +1,9 @@
 import { apiContext } from "service-srv";
 import { execQuery } from "utils/query";
-
 const g = global as any;
 export const _ = {
-  url: "/_dbs/:tableName",
-  async api(tableName: any) {
+  url: "/_dbs/*",
+  async api() {
     const { req, res } = apiContext(this);
     if (typeof g.db !== "undefined") {
       const body = req.params;
