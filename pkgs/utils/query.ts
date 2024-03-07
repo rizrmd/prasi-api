@@ -121,7 +121,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   is_pk: !!is_pk,
                   type: type.toLowerCase(),
                   optional: !!col.optional,
-                  db_type: attr.name,
+                  db_type: attr.name.toLowerCase(),
                   default: default_val
                 };
               }
