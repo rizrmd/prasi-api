@@ -14,31 +14,35 @@ export const execQuery = async (args: DBArg, prisma: any) => {
   const { table, action, params } = args;
 
   if (action === "batch_update") {
-    const { batch } = params as unknown as {
-      table: string;
-      batch: { table: string; data: any; where: any }[];
+    const { table, batch } = params as unknown as {
+      table?: { table: string; data: any; where: any }[];
+      batch?: { table: string; data: any; where: any }[];
     };
 
     const promises = [] as any[];
 
-    try {
-      for (const item of batch) {
-        if (
-          item.table &&
-          Object.entries(item.where).length > 0 &&
-          Object.entries(item.data).length > 0
-        ) {
-          const tableInstance = prisma[item.table];
-          if (tableInstance) {
-            promises.push(
-              tableInstance.updateMany({ where: item.where, data: item.data })
-            );
+    const b = table || batch;
+
+    if (b) {
+      try {
+        for (const item of b) {
+          if (
+            item.table &&
+            Object.entries(item.where).length > 0 &&
+            Object.entries(item.data).length > 0
+          ) {
+            const tableInstance = prisma[item.table];
+            if (tableInstance) {
+              promises.push(
+                tableInstance.updateMany({ where: item.where, data: item.data })
+              );
+            }
           }
         }
+        await Promise.all(promises);
+      } catch (e: any) {
+        throw new Error(e.message);
       }
-      await Promise.all(promises);
-    } catch (e: any) {
-      throw new Error(e.message);
     }
 
     return;
