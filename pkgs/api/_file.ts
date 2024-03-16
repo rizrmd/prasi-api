@@ -133,6 +133,7 @@ export const _ = {
     const fname = arr.join("-") + "." + ext;
     const ctype = mime.getType(fname);
     if (ctype) {
+      res.headers.set("content-disposition", `inline; filename="${fname}"`);
       res.headers.set("content-type", ctype);
     }
 
