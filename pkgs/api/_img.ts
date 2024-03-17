@@ -1,9 +1,12 @@
 import { dirAsync } from "fs-jetpack";
 import { apiContext } from "service-srv";
+import { stat } from "fs/promises";
 import { dir } from "utils/dir";
 import { g } from "utils/global";
 import { dirname, parse } from "path";
 import sharp from "sharp";
+
+const modified = {} as Record<string, number>;
 
 export const _ = {
   url: "/_img/**",
@@ -22,44 +25,58 @@ export const _ = {
       .filter((e) => !!e)
       .join("/");
 
-    if (!w) {
-      const file = Bun.file(dir(`${g.datadir}/files/${rpath}`));
-      return new Response(file);
-    } else {
-      const original = Bun.file(dir(`${g.datadir}/files/${rpath}`));
-      if (await original.exists()) {
-        const p = parse(dir(`${g.datadir}/files/${rpath}`));
-        if (p.ext === ".svg") {
-          return new Response(original);
-        }
-
-        let file_name = dir(`${g.datadir}/files/upload/thumb/${w}/${rpath}`);
-        let file = Bun.file(file_name);
-        if (!(await file.exists())) {
-          await dirAsync(dirname(file_name));
+    try {
+      const filepath = dir(`${g.datadir}/files/${rpath}`);
+      const st = await stat(filepath);
+      if (st.isFile()) {
+        if (
+          !modified[filepath] ||
+          (modified[filepath] && modified[filepath] !== st.mtimeMs)
+        ) {
+          modified[filepath] = st.mtimeMs;
           force = true;
         }
 
+        if (!w) {
+          const file = Bun.file(filepath);
+          return new Response(file);
+        } else {
+          const original = Bun.file(filepath);
 
-        if (format === "jpg" && !file_name.endsWith(".jpg")) {
-          force = true;
-        }
-
-        if (force) {
-          const img = sharp(await original.arrayBuffer());
-          let out = img.resize({ width: w, fit: "inside" });
-
-          if (format === "jpg" && !file_name.endsWith(".jpg")) {
-            file_name = file_name + ".jpg";
-            out = out.toFormat("jpg");
+          const p = parse(filepath);
+          if (p.ext === ".svg") {
+            return new Response(original);
           }
 
-          await Bun.write(file_name, await out.toBuffer());
-          file = Bun.file(file_name);
-        }
+          let file_name = dir(`${g.datadir}/files/upload/thumb/${w}/${rpath}`);
+          let file = Bun.file(file_name);
+          if (!(await file.exists())) {
+            await dirAsync(dirname(file_name));
+            force = true;
+          }
 
-        return new Response(file);
+          if (format === "jpg" && !file_name.endsWith(".jpg")) {
+            force = true;
+          }
+
+          if (force) {
+            const img = sharp(await original.arrayBuffer());
+            let out = img.resize({ width: w, fit: "inside" });
+
+            if (format === "jpg" && !file_name.endsWith(".jpg")) {
+              file_name = file_name + ".jpg";
+              out = out.toFormat("jpg");
+            }
+
+            await Bun.write(file_name, await out.toBuffer());
+            file = Bun.file(file_name);
+          }
+
+          return new Response(file);
+        }
       }
+    } catch (e: any) {
+      return new Response("ERROR:" + e.message, { status: 404 });
     }
 
     return res;
