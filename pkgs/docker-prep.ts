@@ -42,9 +42,9 @@ if (!g.dockerPrepared) {
       if (
         file.startsWith("app/") ||
         file.startsWith("pkgs/") ||
-        ["bun.lockb", "package.json"].includes(file)
+        ["package.json"].includes(file)
       ) {
-        if (file.endsWith("package.json")) {
+        if (file.endsWith("package.json") || file.endsWith("bun.lockb")) {
           await dirAsync(dir.path("_tmp_docker", path.dirname(file)));
           await copyAsync(dir.path(file), dir.path("_tmp_docker", file), {
             overwrite: true,
