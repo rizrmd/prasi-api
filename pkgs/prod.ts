@@ -37,9 +37,13 @@ console.log("Process Manager running at port:", port);
 
 if (await existsAsync(dir("app/db/.env"))) {
   if (!(await existsAsync(dir("node_modules/.prisma")))) {
-    await $({ cwd: dir(`app/db`) })`bun install`;
-    await $({ cwd: dir(`app/db`) })`bun prisma db pull`;
-    await $({ cwd: dir(`app/db`) })`bun prisma generate`;
+    try {
+      await $({ cwd: dir(`app/db`) })`bun install`;
+      await $({ cwd: dir(`app/db`) })`bun prisma db pull`;
+      await $({ cwd: dir(`app/db`) })`bun prisma generate`;
+    } catch (e) {
+      console.error(e);
+    }
   }
 }
 

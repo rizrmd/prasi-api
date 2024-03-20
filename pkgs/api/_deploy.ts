@@ -68,9 +68,13 @@ datasource db {
 }`
           );
 
-          await $({ cwd: dir("app/db") })`bun install`;
-          await $({ cwd: dir("app/db") })`bun prisma db pull`;
-          await $({ cwd: dir("app/db") })`bun prisma generate`;
+          try {
+            await $({ cwd: dir("app/db") })`bun install`;
+            await $({ cwd: dir("app/db") })`bun prisma db pull`;
+            await $({ cwd: dir("app/db") })`bun prisma generate`;
+          } catch (e) {
+            console.error(e);
+          }
           res.send("ok");
           setTimeout(() => {
             restartServer();
