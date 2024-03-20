@@ -13,6 +13,7 @@ RUN PATH="/usr/lib/node_modules/npm/bin:$PATH"
 
 COPY dockerzip .
 RUN unzip -o dockerzip
+RUN bun pm trust --all
 RUN bun install
 COPY . .
 
