@@ -39,7 +39,7 @@ if (await existsAsync(dir("app/db/.env"))) {
   if (!(await existsAsync(dir("node_modules/.prisma")))) {
     try {
       await $({ cwd: dir(`app/db`) })`bun install`;
-      await $({ cwd: dir(`app/db`) })`bun prisma db pull`;
+      await $({ cwd: dir(`app/db`) })`bun prisma db pull --force`;
       await $({ cwd: dir(`app/db`) })`bun prisma generate`;
     } catch (e) {
       console.error(e);
