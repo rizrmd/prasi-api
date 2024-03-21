@@ -64,7 +64,7 @@ export const createServer = async () => {
       return arg;
     };
   };
-  
+
   g.server = Bun.serve({
     port: g.port,
     maxRequestBodySize: 1024 * 1024 * 128,
@@ -73,6 +73,7 @@ export const createServer = async () => {
 
       const handle = async (req: Request) => {
         const api = await serveAPI(url, req);
+
         if (api) {
           return api;
         }
@@ -131,7 +132,7 @@ export const createServer = async () => {
           (await existsAsync(dir(`app/web/server/index.js`)))
         ) {
           const res = require(dir(`app/web/server/index.js`));
-          if (res && typeof res.server === 'object') {
+          if (res && typeof res.server === "object") {
             g.deploy.server = res.server;
           }
         }

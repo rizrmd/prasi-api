@@ -2,6 +2,7 @@ import { apiContext } from "service-srv";
 import { SinglePage, g } from "utils/global";
 import { gzipAsync } from "utils/gzip";
 import { getContent } from "../server/prep-api-ts";
+import mime from "mime";
 
 export const _ = {
   url: "/_prasi/**",
@@ -20,6 +21,8 @@ export const _ = {
         if (gz) {
           const path = parts.slice(1).join("/");
           if (gz.code.site[path]) {
+            const type = mime.getType(path);
+            if (type) res.setHeader("content-type", type);
             res.send(
               gz.code.site[path],
               req.headers.get("accept-encoding") || ""
