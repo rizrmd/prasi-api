@@ -1,4 +1,4 @@
-import { createPrismaSchemaBuilder } from "@mrleebo/prisma-ast";
+import { Attribute, createPrismaSchemaBuilder } from "@mrleebo/prisma-ast";
 import { readAsync } from "fs-jetpack";
 import { Prisma } from "../../app/db/db";
 import { dir } from "./dir";
@@ -147,33 +147,40 @@ export const execQuery = async (args: DBArg, prisma: any) => {
           }
           return rels;
         } else if (action === "schema_columns") {
+          console.log(schema_table.properties);
           for (const col of schema_table.properties) {
-            if (
-              col.type === "field" &&
-              !col.array &&
-              col.attributes &&
-              col.attributes?.length > 0
-            ) {
-              const attr = col.attributes.find(
-                (e) => e.name !== "id" && e.name !== "default"
-              );
+            if (col.type === "field" && !col.array) {
+              let is_pk = false;
+              let type = col.fieldType;
+              let attr = undefined as Attribute | undefined;
+              let default_val = undefined as Attribute | undefined;
+              if (col.attributes && col.attributes?.length > 0) {
+                attr = col.attributes.find(
+                  (e) => e.name !== "id" && e.name !== "default"
+                );
 
-              const default_val = col.attributes.find(
-                (e) => e.name === "default"
-              );
-              const is_pk = col.attributes.find((e) => e.name === "id");
+                default_val = col.attributes.find((e) => e.name === "default");
+                is_pk = !!col.attributes.find((e) => e.name === "id");
 
-              if (attr && attr.name !== "relation") {
-                let type = "String";
-                if (typeof col.fieldType === "string") type = col.fieldType;
+                if (attr && attr.name !== "relation") {
+                  let type = "String";
+                  if (typeof col.fieldType === "string") type = col.fieldType;
+                }
+              }
 
-                columns[col.name] = {
-                  is_pk: !!is_pk,
-                  type: type.toLowerCase(),
-                  optional: !!col.optional,
-                  db_type: attr.name.toLowerCase(),
-                  default: default_val,
-                };
+              if (typeof type === "string") {
+                const db_type = attr
+                  ? attr.name.toLowerCase()
+                  : type.toLowerCase();
+                if (db_type !== "relation") {
+                  columns[col.name] = {
+                    is_pk: !!is_pk,
+                    type: type.toLowerCase(),
+                    optional: !!col.optional,
+                    db_type,
+                    default: default_val,
+                  };
+                }
               }
             }
           }
