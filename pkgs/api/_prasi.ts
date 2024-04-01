@@ -4,6 +4,9 @@ import { gzipAsync } from "utils/gzip";
 import { getContent } from "../server/prep-api-ts";
 import mime from "mime";
 
+const cache = {
+  route: null as any,
+};
 export const _ = {
   url: "/_prasi/**",
   async api() {
@@ -32,13 +35,15 @@ export const _ = {
       },
       route: async () => {
         if (gz) {
+          if (cache.route) return cache.route;
+
           let layout = null as null | SinglePage;
           for (const l of gz.layouts) {
             if (!layout) layout = l;
             if (l.is_default_layout) layout = l;
           }
 
-          return await responseCompressed(
+          cache.route = await responseCompressed(
             req,
             JSON.stringify({
               site: { ...gz.site, api_url: (gz.site as any)?.config?.api_url },
@@ -51,6 +56,8 @@ export const _ = {
               },
             })
           );
+
+          return cache.route;
         }
       },
       page: async () => {
