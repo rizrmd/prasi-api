@@ -195,6 +195,9 @@ export const execQuery = async (args: DBArg, prisma: any) => {
   if (tableInstance) {
     if (action === "query" && table.startsWith("$query")) {
       try {
+        if (table === "$queryRawUnsafe") {
+          return await prisma.$queryRawUnsafe(params[0]);
+        }
         const q = params.shift();
         return await tableInstance.bind(prisma)(Prisma.sql(q, ...params));
       } catch (e) {
