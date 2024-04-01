@@ -49,14 +49,13 @@ export const _ = {
             return new Response(original);
           }
 
-          let file_name = dir(`${g.datadir}/files/upload/thumb/${w}/${rpath}`);
+          let path = `${w ? `w-${w}` : ""}${h ? `h-${h}` : ``}`;
+          let file_name = dir(
+            `${g.datadir}/files/upload/thumb/${path}/${rpath}.webp`
+          );
           let file = Bun.file(file_name);
           if (!(await file.exists())) {
             await dirAsync(dirname(file_name));
-            force = true;
-          }
-
-          if (format === "jpg" && !file_name.endsWith(".jpg")) {
             force = true;
           }
 
@@ -69,12 +68,8 @@ export const _ = {
             if (h) {
               arg.width = h;
             }
-            let out = img.resize(arg);
-
-            if (format === "jpg" && !file_name.endsWith(".jpg")) {
-              file_name = file_name + ".jpg";
-              out = out.toFormat("jpg");
-            }
+            let out = img.resize(arg).webp({ quality: 75 });
+            out = out.webp();
 
             await Bun.write(file_name, await out.toBuffer());
             file = Bun.file(file_name);
