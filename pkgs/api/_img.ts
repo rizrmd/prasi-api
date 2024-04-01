@@ -16,7 +16,7 @@ export const _ = {
 
     const w = parseInt(req.query_parameters.w);
     const h = parseInt(req.query_parameters.h);
-    const format = req.query_parameters.f;
+    const fit = req.query_parameters.fit;
     let force = typeof req.query_parameters.force === "string";
 
     let rpath = decodeURIComponent(req.params._);
@@ -49,7 +49,9 @@ export const _ = {
             return new Response(original);
           }
 
-          let path = `${w ? `w-${w}` : ""}${h ? `h-${h}` : ``}`;
+          let path = `${w ? `w-${w}` : ""}${h ? `h-${h}` : ``}${
+            fit ? `-${fit}` : ""
+          }`;
           let file_name = dir(
             `${g.datadir}/files/upload/thumb/${path}/${rpath}.webp`
           );
@@ -61,12 +63,12 @@ export const _ = {
 
           if (force) {
             const img = sharp(await original.arrayBuffer());
-            const arg: any = { fit: "inside" };
+            const arg: any = { fit: fit || "inside" };
             if (w) {
               arg.width = w;
             }
             if (h) {
-              arg.width = h;
+              arg.height = h;
             }
             let out = img.resize(arg).webp({ quality: 75 });
             out = out.webp();
