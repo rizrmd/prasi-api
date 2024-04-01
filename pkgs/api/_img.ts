@@ -15,6 +15,7 @@ export const _ = {
     let res = new Response("NOT FOUND", { status: 404 });
 
     const w = parseInt(req.query_parameters.w);
+    const h = parseInt(req.query_parameters.h);
     const format = req.query_parameters.f;
     let force = typeof req.query_parameters.force === "string";
 
@@ -37,7 +38,7 @@ export const _ = {
           force = true;
         }
 
-        if (!w) {
+        if (!w && !h) {
           const file = Bun.file(filepath);
           return new Response(file);
         } else {
@@ -61,7 +62,14 @@ export const _ = {
 
           if (force) {
             const img = sharp(await original.arrayBuffer());
-            let out = img.resize({ width: w, fit: "inside" });
+            const arg: any = { fit: "inside" };
+            if (w) {
+              arg.width = w;
+            }
+            if (h) {
+              arg.width = h;
+            }
+            let out = img.resize(arg);
 
             if (format === "jpg" && !file_name.endsWith(".jpg")) {
               file_name = file_name + ".jpg";
