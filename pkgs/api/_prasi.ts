@@ -35,7 +35,7 @@ export const _ = {
       },
       route: async () => {
         if (gz) {
-          if (cache.route) return cache.route;
+          if (cache.route) return await responseCompressed(req, cache.route);
 
           let layout = null as null | SinglePage;
           for (const l of gz.layouts) {
@@ -43,21 +43,18 @@ export const _ = {
             if (l.is_default_layout) layout = l;
           }
 
-          cache.route = await responseCompressed(
-            req,
-            JSON.stringify({
-              site: { ...gz.site, api_url: (gz.site as any)?.config?.api_url },
-              urls: gz.pages.map((e) => {
-                return { id: e.id, url: e.url };
-              }),
-              layout: {
-                id: layout?.id,
-                root: layout?.content_tree,
-              },
-            })
-          );
+          cache.route = JSON.stringify({
+            site: { ...gz.site, api_url: (gz.site as any)?.config?.api_url },
+            urls: gz.pages.map((e) => {
+              return { id: e.id, url: e.url };
+            }),
+            layout: {
+              id: layout?.id,
+              root: layout?.content_tree,
+            },
+          });
 
-          return cache.route;
+          return await responseCompressed(req, cache.route);
         }
       },
       page: async () => {
