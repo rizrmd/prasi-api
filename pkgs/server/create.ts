@@ -65,11 +65,20 @@ export const createServer = async () => {
     };
   };
 
+  if (!g.deploy.server && (await existsAsync(dir(`app/web/server/index.js`)))) {
+    const res = require(dir(`app/web/server/index.js`));
+    if (res && typeof res.server === "object") {
+      g.deploy.server = res.server;
+    }
+  }
+
+  await g.deploy.server?.init?.();
+
   g.server = Bun.serve({
     port: g.port,
     maxRequestBodySize: 1024 * 1024 * 128,
     async fetch(req) {
-      const url = new URL(req.url);
+      const url = new URL(req.url) as URL;
 
       const handle = async (req: Request) => {
         const api = await serveAPI(url, req);
@@ -108,6 +117,7 @@ export const createServer = async () => {
             }
 
             let content = "";
+
             if (core[pathname]) content = core[pathname];
             else if (site[pathname]) content = site[pathname];
 
@@ -127,15 +137,6 @@ export const createServer = async () => {
         !url.pathname.startsWith("/_deploy") &&
         !url.pathname.startsWith("/_prasi")
       ) {
-        if (
-          !g.deploy.server &&
-          (await existsAsync(dir(`app/web/server/index.js`)))
-        ) {
-          const res = require(dir(`app/web/server/index.js`));
-          if (res && typeof res.server === "object") {
-            g.deploy.server = res.server;
-          }
-        }
         if (g.deploy.server && g.deploy.index) {
           try {
             return await g.deploy.server.http({

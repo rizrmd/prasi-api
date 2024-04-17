@@ -33,6 +33,7 @@ type PrasiServer = {
     handle: (req: Request) => Promise<Response>;
     index: { head: string[]; body: string[]; render: () => string };
   }) => Promise<Response>;
+  init?: () => Promise<void>;
 };
 
 export const g = global as unknown as {
