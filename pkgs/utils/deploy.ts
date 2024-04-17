@@ -1,4 +1,10 @@
-import { dirAsync, read, removeAsync, writeAsync } from "fs-jetpack";
+import {
+  dirAsync,
+  existsAsync,
+  read,
+  removeAsync,
+  writeAsync,
+} from "fs-jetpack";
 import { dir } from "./dir";
 import { g } from "./global";
 import { gunzipAsync } from "./gzip";
@@ -68,6 +74,15 @@ export const deploy = {
           }, 300);
         }
       }
+
+      if (await existsAsync(dir(`app/web/server/index.js`))) {
+        const res = require(dir(`app/web/server/index.js`));
+        if (res && typeof res.server === "object") {
+          g.deploy.server = res.server;
+        }
+      }
+
+      await g.deploy.server?.init?.();
     } catch (e) {
       console.log("Failed to load site", this.config.site_id);
     }
