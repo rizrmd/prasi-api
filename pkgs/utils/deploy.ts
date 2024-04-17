@@ -70,19 +70,19 @@ export const deploy = {
               for (const [k, v] of Object.entries(g.deploy.gz.code.server)) {
                 await writeAsync(dir(`app/web/server/${k}`), v);
               }
+
+              if (await existsAsync(dir(`app/web/server/index.js`))) {
+                const res = require(dir(`app/web/server/index.js`));
+                if (res && typeof res.server === "object") {
+                  g.deploy.server = res.server;
+                }
+              }
+
+              await g.deploy.server?.init?.({ port: g.server.port });
             }
           }, 300);
         }
       }
-
-      if (await existsAsync(dir(`app/web/server/index.js`))) {
-        const res = require(dir(`app/web/server/index.js`));
-        if (res && typeof res.server === "object") {
-          g.deploy.server = res.server;
-        }
-      }
-
-      await g.deploy.server?.init?.();
     } catch (e) {
       console.log("Failed to load site", this.config.site_id);
     }
