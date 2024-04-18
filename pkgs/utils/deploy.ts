@@ -78,7 +78,16 @@ export const deploy = {
                 }
               }
 
-              await g.deploy.server?.init?.({ port: g.server.port });
+              if (g.server) {
+                await g.deploy.server?.init?.({ port: g.server.port });
+              } else {
+                const inv = setInterval(async () => {
+                  if (g.server) {
+                    clearInterval(inv);
+                    await g.deploy.server?.init?.({ port: g.server.port });
+                  }
+                }, 1000);
+              }
             }
           }, 300);
         }
