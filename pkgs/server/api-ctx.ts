@@ -18,6 +18,12 @@ const parseQueryParams = (ctx: any) => {
 };
 export const apiContext = (ctx: any) => {
   ctx.req.params = ctx.params;
+
+  if (ctx.params["_0"]) {
+    ctx.params["_"] = ctx.params["_0"];
+    delete ctx.params["_0"];
+  }
+
   ctx.req.query_parameters = parseQueryParams(ctx);
   return {
     req: ctx.req as Request & { params: any; query_parameters: any },
