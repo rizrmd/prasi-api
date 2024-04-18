@@ -1,7 +1,8 @@
-import { Attribute, createPrismaSchemaBuilder } from "@mrleebo/prisma-ast";
+import { createPrismaSchemaBuilder } from "@mrleebo/prisma-ast";
 import { readAsync } from "fs-jetpack";
 import { Prisma } from "../../app/db/db";
 import { dir } from "./dir";
+import { gunzipAsync } from "./gzip";
 
 export type DBArg = {
   db: string;
@@ -28,6 +29,8 @@ export const execQuery = async (args: DBArg, prisma: any) => {
         for (const item of b) {
           if (
             item.table &&
+            !!item.data &&
+            !!item.where &&
             Object.entries(item.where).length > 0 &&
             Object.entries(item.data).length > 0
           ) {
@@ -147,40 +150,33 @@ export const execQuery = async (args: DBArg, prisma: any) => {
           }
           return rels;
         } else if (action === "schema_columns") {
-          console.log(schema_table.properties);
           for (const col of schema_table.properties) {
-            if (col.type === "field" && !col.array) {
-              let is_pk = false;
-              let type = col.fieldType;
-              let attr = undefined as Attribute | undefined;
-              let default_val = undefined as Attribute | undefined;
-              if (col.attributes && col.attributes?.length > 0) {
-                attr = col.attributes.find(
-                  (e) => e.name !== "id" && e.name !== "default"
-                );
+            if (
+              col.type === "field" &&
+              !col.array &&
+              col.attributes &&
+              col.attributes?.length > 0
+            ) {
+              const attr = col.attributes.find(
+                (e) => e.name !== "id" && e.name !== "default"
+              );
 
-                default_val = col.attributes.find((e) => e.name === "default");
-                is_pk = !!col.attributes.find((e) => e.name === "id");
+              const default_val = col.attributes.find(
+                (e) => e.name === "default"
+              );
+              const is_pk = col.attributes.find((e) => e.name === "id");
 
-                if (attr && attr.name !== "relation") {
-                  let type = "String";
-                  if (typeof col.fieldType === "string") type = col.fieldType;
-                }
-              }
+              if (attr && attr.name !== "relation") {
+                let type = "String";
+                if (typeof col.fieldType === "string") type = col.fieldType;
 
-              if (typeof type === "string") {
-                const db_type = attr
-                  ? attr.name.toLowerCase()
-                  : type.toLowerCase();
-                if (db_type !== "relation") {
-                  columns[col.name] = {
-                    is_pk: !!is_pk,
-                    type: type.toLowerCase(),
-                    optional: !!col.optional,
-                    db_type,
-                    default: default_val,
-                  };
-                }
+                columns[col.name] = {
+                  is_pk: !!is_pk,
+                  type: type.toLowerCase(),
+                  optional: !!col.optional,
+                  db_type: attr.name.toLowerCase(),
+                  default: default_val,
+                };
               }
             }
           }
@@ -195,11 +191,17 @@ export const execQuery = async (args: DBArg, prisma: any) => {
   if (tableInstance) {
     if (action === "query" && table.startsWith("$query")) {
       try {
-        if (table === "$queryRawUnsafe") {
-          return await prisma.$queryRawUnsafe(params[0]);
+        const gzip = params as unknown as string;
+
+        const u8 = new Uint8Array([...atob(gzip)].map((c) => c.charCodeAt(0)));
+        const json = JSON.parse((await gunzipAsync(u8)).toString("utf8"));
+
+        if (Array.isArray(json)) {
+          const q = json.shift();
+          return await tableInstance.bind(prisma)(Prisma.sql(q, ...json));
         }
-        const q = params.shift();
-        return await tableInstance.bind(prisma)(Prisma.sql(q, ...params));
+
+        return [];
       } catch (e) {
         console.log(e);
         return e;
