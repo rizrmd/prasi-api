@@ -196,6 +196,10 @@ export const execQuery = async (args: DBArg, prisma: any) => {
         const u8 = new Uint8Array([...atob(gzip)].map((c) => c.charCodeAt(0)));
         const json = JSON.parse((await gunzipAsync(u8)).toString("utf8"));
 
+        if (table === "$queryRawUnsafe") {
+          return await tableInstance.bind(prisma)(...json);
+        }
+
         if (Array.isArray(json)) {
           const q = json.shift();
           return await tableInstance.bind(prisma)(Prisma.sql(q, ...json));
