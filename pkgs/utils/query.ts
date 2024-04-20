@@ -151,31 +151,38 @@ export const execQuery = async (args: DBArg, prisma: any) => {
           return rels;
         } else if (action === "schema_columns") {
           for (const col of schema_table.properties) {
-            if (
-              col.type === "field" &&
-              !col.array &&
-              col.attributes &&
-              col.attributes?.length > 0
-            ) {
-              const attr = col.attributes.find(
-                (e) => e.name !== "id" && e.name !== "default"
-              );
+            if (col.type === "field" && !col.array) {
+              if (col.attributes && col.attributes?.length > 0) {
+                const attr = col.attributes.find(
+                  (e) => e.name !== "id" && e.name !== "default"
+                );
 
-              const default_val = col.attributes.find(
-                (e) => e.name === "default"
-              );
-              const is_pk = col.attributes.find((e) => e.name === "id");
+                const default_val = col.attributes.find(
+                  (e) => e.name === "default"
+                );
+                const is_pk = col.attributes.find((e) => e.name === "id");
 
-              if (attr && attr.name !== "relation") {
                 let type = "String";
                 if (typeof col.fieldType === "string") type = col.fieldType;
 
+                if ((attr && attr.name !== "relation") || !attr) {
+                  columns[col.name] = {
+                    is_pk: !!is_pk,
+                    type: type.toLowerCase(),
+                    optional: !!col.optional,
+                    db_type: attr
+                      ? attr.name.toLowerCase()
+                      : type.toLowerCase(),
+                    default: default_val,
+                  };
+                }
+              } else if (typeof col.fieldType === "string") {
                 columns[col.name] = {
-                  is_pk: !!is_pk,
-                  type: type.toLowerCase(),
+                  is_pk: false,
+                  type: col.fieldType.toLowerCase(),
                   optional: !!col.optional,
-                  db_type: attr.name.toLowerCase(),
-                  default: default_val,
+                  db_type: col.fieldType.toLowerCase(),
+                  default: null,
                 };
               }
             }
