@@ -101,6 +101,5 @@ export const g = global as unknown as {
       deploy: { ts: string };
     };
     server: PrasiServer | null;
-    index: ReturnType<typeof prodIndex> | null;
   };
 };

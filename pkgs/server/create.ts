@@ -7,6 +7,7 @@ import { g } from "../utils/global";
 import { parseArgs } from "./parse-args";
 import { serveAPI } from "./serve-api";
 import { serveWeb } from "./serve-web";
+import { prodIndex } from "utils/prod-index";
 
 export const createServer = async () => {
   g.router = createRouter({ strictTrailingSlash: true });
@@ -65,19 +66,13 @@ export const createServer = async () => {
     };
   };
 
-  if (!g.deploy.server && (await existsAsync(dir(`app/web/server/index.js`)))) {
-    const res = require(dir(`app/web/server/index.js`));
-    if (res && typeof res.server === "object") {
-      g.deploy.server = res.server;
-    }
-  }
-
   g.server = Bun.serve({
     port: g.port,
     maxRequestBodySize: 1024 * 1024 * 128,
     async fetch(req) {
       const url = new URL(req.url) as URL;
       const prasi = {};
+      const index = prodIndex(g.deploy.config.site_id, prasi);
 
       const handle = async (req: Request) => {
         const api = await serveAPI(url, req);
@@ -86,15 +81,13 @@ export const createServer = async () => {
           return api;
         }
 
-        if (g.deploy.index) {
-          if (g.deploy.router) {
-            const found = g.deploy.router.lookup(url.pathname);
-            if (found) {
-              return await serveWeb({
-                content: g.deploy.index.render(),
-                pathname: "index.html",
-              });
-            }
+        if (g.deploy.router) {
+          const found = g.deploy.router.lookup(url.pathname);
+          if (found) {
+            return await serveWeb({
+              content: index.render(),
+              pathname: "index.html",
+            });
           }
 
           if (g.deploy.gz) {
@@ -110,7 +103,7 @@ export const createServer = async () => {
               pathname === "index.htm"
             ) {
               return await serveWeb({
-                content: g.deploy.index.render(),
+                content: index.render(),
                 pathname: "index.html",
               });
             }
@@ -136,7 +129,7 @@ export const createServer = async () => {
         !url.pathname.startsWith("/_deploy") &&
         !url.pathname.startsWith("/_prasi")
       ) {
-        if (g.deploy.server && g.deploy.index) {
+        if (g.deploy.server && index) {
           try {
             return await g.deploy.server.http({
               handle,
@@ -144,7 +137,7 @@ export const createServer = async () => {
               req,
               server: g.server,
               url: { pathname: url.pathname, raw: url },
-              index: g.deploy.index,
+              index: index,
               prasi,
             });
           } catch (e) {
@@ -163,5 +156,3 @@ export const createServer = async () => {
     g.log.info(`Started at port: ${g.server.port}`);
   }
 };
-
-await g.deploy?.server?.init?.({ port: g.server.port });

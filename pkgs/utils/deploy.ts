@@ -36,8 +36,6 @@ export const deploy = {
         )
       );
 
-      g.deploy.index = prodIndex(this.config.site_id);
-
       if (g.deploy.gz) {
         for (const page of g.deploy.gz.layouts) {
           if (page.is_default_layout) {
@@ -133,7 +131,6 @@ export const deploy = {
         raw: null,
         gz: null,
         server: null,
-        index: null,
       };
     }
 
