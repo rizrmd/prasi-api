@@ -23,7 +23,7 @@ export const prodIndex = (
   <div id="root"></div>
   <script>
     window._prasi = { 
-      basepath: "/prod/${site_id}", 
+      basepath: "/", 
       site_id: "${site_id}",${
         prasi.page_id ? `\n      page_id: "${prasi.page_id}",` : ""
       }${
