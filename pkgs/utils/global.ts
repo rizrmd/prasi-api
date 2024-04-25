@@ -32,6 +32,7 @@ type PrasiServer = {
     mode: "dev" | "prod";
     handle: (req: Request) => Promise<Response>;
     index: { head: string[]; body: string[]; render: () => string };
+    prasi: { page_id?: string };
   }) => Promise<Response>;
   init?: (arg: { port: number }) => Promise<void>;
 };

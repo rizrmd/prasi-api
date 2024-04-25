@@ -1,10 +1,11 @@
 import { $ } from "execa";
 import * as fs from "fs";
-import { dirAsync, removeAsync, writeAsync } from "fs-jetpack";
+import { dirAsync, readAsync, removeAsync, writeAsync } from "fs-jetpack";
 import { apiContext } from "service-srv";
 import { deploy } from "utils/deploy";
 import { dir } from "utils/dir";
 import { g } from "utils/global";
+import { parse } from "utils/parse-env";
 import { restartServer } from "utils/restart";
 
 export const _ = {
@@ -55,30 +56,39 @@ DATABASE_URL="${action.url}"
         return "ok";
       case "db-pull":
         {
-          await writeAsync(
-            dir("app/db/prisma/schema.prisma"),
-            `\
-generator client {
-  provider = "prisma-client-js"
-}
+          const env = await readAsync(dir("app/db/.env"));
+          if (env) {
+            const ENV = parse(env);
+            if (typeof ENV.DATABASE_URL === "string") {
+              const type = ENV.DATABASE_URL.split("://").shift();
+              if (type) {
+                await writeAsync(
+                  dir("app/db/prisma/schema.prisma"),
+                  `\
+    generator client {
+      provider = "prisma-client-js"
+    }
+    
+    datasource db {
+      provider = "${type}"
+      url      = env("DATABASE_URL")
+    }`
+                );
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}`
-          );
-
-          try {
-            await $({ cwd: dir("app/db") })`bun install`;
-            await $({ cwd: dir("app/db") })`bun prisma db pull --force`;
-            await $({ cwd: dir("app/db") })`bun prisma generate`;
-          } catch (e) {
-            console.error(e);
+                try {
+                  await $({ cwd: dir("app/db") })`bun install`;
+                  await $({ cwd: dir("app/db") })`bun prisma db pull --force`;
+                  await $({ cwd: dir("app/db") })`bun prisma generate`;
+                } catch (e) {
+                  console.error(e);
+                }
+                res.send("ok");
+                setTimeout(() => {
+                  restartServer();
+                }, 300);
+              }
+            }
           }
-          res.send("ok");
-          setTimeout(() => {
-            restartServer();
-          }, 300);
         }
         break;
       case "restart":

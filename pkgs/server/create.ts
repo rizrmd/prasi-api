@@ -72,13 +72,12 @@ export const createServer = async () => {
     }
   }
 
-  await g.deploy.server?.init?.();
-
   g.server = Bun.serve({
     port: g.port,
     maxRequestBodySize: 1024 * 1024 * 128,
     async fetch(req) {
       const url = new URL(req.url) as URL;
+      const prasi = {};
 
       const handle = async (req: Request) => {
         const api = await serveAPI(url, req);
@@ -146,6 +145,7 @@ export const createServer = async () => {
               server: g.server,
               url: { pathname: url.pathname, raw: url },
               index: g.deploy.index,
+              prasi,
             });
           } catch (e) {
             console.error(e);
@@ -163,3 +163,5 @@ export const createServer = async () => {
     g.log.info(`Started at port: ${g.server.port}`);
   }
 };
+
+await g.deploy.server?.init?.({ port: g.server.port });
