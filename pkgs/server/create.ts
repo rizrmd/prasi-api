@@ -164,4 +164,4 @@ export const createServer = async () => {
   }
 };
 
-await g.deploy.server?.init?.({ port: g.server.port });
+await g.deploy?.server?.init?.({ port: g.server.port });
