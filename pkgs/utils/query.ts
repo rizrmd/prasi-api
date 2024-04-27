@@ -197,42 +197,33 @@ export const execQuery = async (args: DBArg, prisma: any) => {
 
   if (tableInstance) {
     if (action === "query" && table.startsWith("$query")) {
-      try {
-        const gzip = params as unknown as string;
+      const gzip = params as unknown as string;
 
-        const u8 = new Uint8Array([...atob(gzip)].map((c) => c.charCodeAt(0)));
-        const json = JSON.parse((await gunzipAsync(u8)).toString("utf8"));
+      const u8 = new Uint8Array([...atob(gzip)].map((c) => c.charCodeAt(0)));
+      const json = JSON.parse((await gunzipAsync(u8)).toString("utf8"));
 
-        if (table === "$queryRawUnsafe") {
-          return await tableInstance.bind(prisma)(...json);
-        }
-
-        if (Array.isArray(json)) {
-          const q = json.shift();
-          return await tableInstance.bind(prisma)(Prisma.sql(q, ...json));
-        }
-
-        return [];
-      } catch (e) {
-        console.log(e);
-        return e;
+      if (table === "$queryRawUnsafe") {
+        return await tableInstance.bind(prisma)(...json);
       }
+
+      if (Array.isArray(json)) {
+        const q = json.shift();
+        return await tableInstance.bind(prisma)(Prisma.sql(q, ...json));
+      }
+
+      return [];
     }
 
     const method = tableInstance[action];
 
     if (method) {
-      try {
-        const result = await method(...params);
+      const result = await method(...params);
 
-        if (!result) {
-          return JSON.stringify(result);
-        }
-
-        return result;
-      } catch (e: any) {
-        throw new Error(e.message);
+      if (!result) {
+        return JSON.stringify(result);
       }
+
+      return result;
     }
   }
 };
