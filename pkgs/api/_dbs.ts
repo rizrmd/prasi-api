@@ -12,9 +12,9 @@ export const _ = {
         const result = await execQuery(body, g.db);
         res.send(result);
       } catch (e: any) {
+        console.log("_dbs error", e.message);
         res.sendStatus(500);
         res.send(e.message);
-        console.error(e);
       }
     }
   },
