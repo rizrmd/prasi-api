@@ -1,4 +1,6 @@
-import { createPrismaSchemaBuilder } from "@mrleebo/prisma-ast";
+import {
+  createPrismaSchemaBuilder
+} from "@mrleebo/prisma-ast";
 import { readAsync } from "fs-jetpack";
 import { Prisma } from "../../app/db/db";
 import { dir } from "./dir";
@@ -14,7 +16,29 @@ export type DBArg = {
 export const execQuery = async (args: DBArg, prisma: any) => {
   const { table, action, params } = args;
 
-  if (action === "batch_update") {
+  if (action === "batch_upsert") {
+    const { arg } = params as unknown as {
+      arg?: {
+        table: string;
+        where: any;
+        data: any[];
+      };
+    };
+    if (arg) {
+      const { table, where, data } = arg;
+      if (table && where && data) {
+        const transactions = [];
+        if (Object.keys(where.length > 0)) {
+          transactions.push(prisma[table].deleteMany({ where }));
+        }
+        transactions.push(
+          prisma[table].createMany({ data, skipDuplicates: true })
+        );
+
+        return await prisma.$transaction(transactions);
+      }
+    }
+  } else if (action === "batch_update") {
     const { table, batch } = params as unknown as {
       table?: { table: string; data: any; where: any }[];
       batch?: { table: string; data: any; where: any }[];
@@ -217,6 +241,13 @@ export const execQuery = async (args: DBArg, prisma: any) => {
     const method = tableInstance[action];
 
     if (method) {
+      if (
+        action === "deleteMany" &&
+        (!params[0] || (params[0] && Object.keys(params[0]).length === 0))
+      ) {
+        throw new Error("deleteMany without condition is forbidden");
+      }
+
       const result = await method(...params);
 
       if (!result) {
