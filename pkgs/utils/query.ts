@@ -1,6 +1,4 @@
-import {
-  createPrismaSchemaBuilder
-} from "@mrleebo/prisma-ast";
+import { Property, createPrismaSchemaBuilder } from "@mrleebo/prisma-ast";
 import { readAsync } from "fs-jetpack";
 import { Prisma } from "../../app/db/db";
 import { dir } from "./dir";
@@ -28,14 +26,99 @@ export const execQuery = async (args: DBArg, prisma: any) => {
       const { table, where, data } = arg;
       if (table && where && data) {
         const transactions = [];
-        if (Object.keys(where.length > 0)) {
-          transactions.push(prisma[table].deleteMany({ where }));
-        }
-        transactions.push(
-          prisma[table].createMany({ data, skipDuplicates: true })
-        );
 
-        return await prisma.$transaction(transactions);
+        const schema_path = dir("app/db/prisma/schema.prisma");
+        const schema = createPrismaSchemaBuilder(await readAsync(schema_path));
+        const schema_table = schema.findByType("model", { name: table });
+
+        if (schema_table) {
+          let pks: Property[] = [];
+          for (const col of schema_table.properties) {
+            if (col.type === "field" && !col.array) {
+              if (col.attributes && col.attributes?.length > 0) {
+                const is_pk = col.attributes.find((e) => e.name === "id");
+                if (is_pk) {
+                  pks.push(col);
+                  break;
+                }
+              }
+            }
+          }
+          if (pks.length > 0) {
+            if (Object.keys(where.length > 0)) {
+              const select = {} as any;
+              for (const pk of pks) {
+                select[pk.name] = true;
+              }
+              const existing: any[] = await prisma[table].findMany({
+                where,
+                select,
+              });
+
+              const updates = [] as any[];
+              const inserts = [] as any[];
+              const deletes = [] as any[];
+              const exists_idx = new Set<number>();
+
+              for (const row of data) {
+                const found = existing.find((item, idx) => {
+                  for (const pk of pks) {
+                    if (item[pk.name] !== row[pk.name]) return false;
+                  }
+                  exists_idx.add(idx);
+                  return true;
+                });
+
+                if (found) {
+                  updates.push(row);
+                } else {
+                  inserts.push(row);
+                }
+              }
+
+              if (exists_idx.size !== existing.length) {
+                for (const [k, v] of Object.entries(existing)) {
+                  if (!exists_idx.has(parseInt(k))) {
+                    deletes.push(v);
+                  }
+                }
+              }
+
+              if (inserts.length > 0) {
+                transactions.push(
+                  prisma[table].createMany({
+                    data: inserts,
+                    skipDuplicates: true,
+                  })
+                );
+              }
+
+              if (updates.length > 0) {
+                for (const item of updates) {
+                  const where = {} as any;
+                  for (const pk of pks) {
+                    where[pk.name] = item[pk.name];
+                  }
+                  transactions.push(
+                    prisma[table].update({ data: item, where })
+                  );
+                }
+              }
+
+              if (deletes.length > 0) {
+                for (const item of deletes) {
+                  const where = {} as any;
+                  for (const pk of pks) {
+                    where[pk.name] = item[pk.name];
+                  }
+                  transactions.push(prisma[table].delete({ where }));
+                }
+              }
+
+              return await prisma.$transaction(transactions);
+            }
+          }
+        }
       }
     }
   } else if (action === "batch_update") {
