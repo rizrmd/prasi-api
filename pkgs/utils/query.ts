@@ -70,9 +70,9 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                 });
 
                 if (found) {
-                  updates.push(row);
+                  updates.push({...row, ...where});
                 } else {
-                  inserts.push(row);
+                  inserts.push({...row, ...where});
                 }
               }
 
