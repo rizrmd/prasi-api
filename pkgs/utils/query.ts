@@ -70,9 +70,9 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                 });
 
                 if (found) {
-                  updates.push({...row, ...where});
+                  updates.push({ ...row, ...where });
                 } else {
-                  inserts.push({...row, ...where});
+                  inserts.push({ ...row, ...where });
                 }
               }
 
@@ -98,7 +98,9 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   const where = {} as any;
                   for (const pk of pks) {
                     where[pk.name] = item[pk.name];
+                    delete item[pk.name];
                   }
+
                   transactions.push(
                     prisma[table].update({ data: item, where })
                   );
