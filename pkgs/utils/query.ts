@@ -102,7 +102,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   }
 
                   transactions.push(
-                    prisma[table].update({ data: item, where })
+                    prisma[table].update({ data: item, where, select })
                   );
                 }
               }
