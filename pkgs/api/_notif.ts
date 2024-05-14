@@ -1,5 +1,6 @@
 import { Database } from "bun:sqlite";
 import admin from "firebase-admin";
+import { listAsync } from "fs-jetpack";
 import { apiContext } from "service-srv";
 
 import { dir } from "utils/dir";
@@ -14,12 +15,17 @@ export const _ = {
       | { type: "send"; id: string; body: string; title: string; data?: any }
   ) {
     const { req } = apiContext(this);
+
+    if (action === "list") {
+      return await listAsync(dir("public"));
+    }
+
     if (!g.firebaseInit) {
       g.firebaseInit = true;
 
       try {
         g.firebase = admin.initializeApp({
-          credential: admin.credential.cert(dir("firebase-admin.json")),
+          credential: admin.credential.cert(dir("public/firebase-admin.json")),
         });
         g.notif = {
           db: new Database(dir(`${g.datadir}/notif.sqlite`)),

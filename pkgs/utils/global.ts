@@ -88,8 +88,9 @@ export const g = global as unknown as {
     gz: null | {
       layouts: SinglePage[];
       pages: SinglePage[];
-      site: {};
+      site: any;
       comps: { id: string; content_tree: true }[];
+      public: Record<string, any>;
       code: {
         server: Record<string, string>;
         site: Record<string, string>;

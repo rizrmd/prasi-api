@@ -1,5 +1,6 @@
 import {
   dirAsync,
+  exists,
   existsAsync,
   read,
   removeAsync,
@@ -37,6 +38,15 @@ export const deploy = {
       );
 
       if (g.deploy.gz) {
+        if (exists(dir("public"))) {
+          await removeAsync(dir("public"));
+          if (g.deploy.gz.public) {
+            await dirAsync(dir("public"));
+            for (const [k, v] of Object.entries(g.deploy.gz.public)) {
+              await writeAsync(dir(`public/${k}`), v);
+            }
+          }
+        }
         for (const page of g.deploy.gz.layouts) {
           if (page.is_default_layout) {
             g.deploy.layout = page.content_tree;
