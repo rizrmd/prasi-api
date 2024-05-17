@@ -1,5 +1,6 @@
 import { Property, createPrismaSchemaBuilder } from "@mrleebo/prisma-ast";
 import { readAsync } from "fs-jetpack";
+//@ts-ignore
 import { Prisma } from "../../app/db/db";
 import { dir } from "./dir";
 import { gunzipAsync } from "./gzip";
@@ -326,11 +327,17 @@ export const execQuery = async (args: DBArg, prisma: any) => {
     const method = tableInstance[action];
 
     if (method) {
-      if (
-        action === "deleteMany" &&
-        (!params[0] || (params[0] && Object.keys(params[0]).length === 0))
-      ) {
-        throw new Error("deleteMany without condition is forbidden");
+      if (action === "deleteMany") {
+        if (!params[0] || (params[0] && Object.keys(params[0]).length === 0))
+          throw new Error("deleteMany without condition is forbidden");
+
+        if (params[0] && params[0].where) {
+          const filtered = Object.values(params[0].where).filter(
+            (e) => e
+          ).length;
+          if (filtered === 0)
+            throw new Error("deleteMany without condition is forbidden");
+        }
       }
 
       const result = await method(...params);
