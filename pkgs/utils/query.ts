@@ -21,10 +21,12 @@ export const execQuery = async (args: DBArg, prisma: any) => {
         table: string;
         where: any;
         data: any[];
+        mode: "field" | "relation";
       };
     };
     if (arg) {
       const { table, where, data } = arg;
+      const mode = arg.mode || "field";
       if (table && where && data) {
         const transactions = [];
 
@@ -70,10 +72,18 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   return true;
                 });
 
-                if (found) {
-                  updates.push({ ...row, ...where });
+                if (mode === "field") {
+                  if (found) {
+                    updates.push({ ...row, ...where });
+                  } else {
+                    inserts.push({ ...row, ...where });
+                  }
                 } else {
-                  inserts.push({ ...row, ...where });
+                  if (found) {
+                    updates.push({ ...row });
+                  } else {
+                    inserts.push({ ...row });
+                  }
                 }
               }
 
