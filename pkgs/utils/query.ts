@@ -96,12 +96,13 @@ export const execQuery = async (args: DBArg, prisma: any) => {
               }
 
               if (inserts.length > 0) {
-                transactions.push(
-                  prisma[table].createMany({
-                    data: inserts,
-                    skipDuplicates: true,
-                  })
-                );
+                for (const row of inserts) {
+                  transactions.push(
+                    prisma[table].create({
+                      data: row,
+                    })
+                  );
+                }
               }
 
               if (updates.length > 0) {
