@@ -47,6 +47,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
               }
             }
           }
+          const rels = getRels({ schema_table, schema, table })
           if (pks.length > 0) {
             if (Object.keys(where.length > 0)) {
               const select = {} as any;
@@ -97,6 +98,20 @@ export const execQuery = async (args: DBArg, prisma: any) => {
 
               if (inserts.length > 0) {
                 for (const row of inserts) {
+
+                  for (const [k, v] of Object.entries(row) as any) {
+                    const rel = rels[k];
+                    if (rel) {
+                      if (rel.type === 'has-one') {
+                        const to = rel.to.fields[0]
+                        if (!v.connect && v[to]) {
+                          let newv = { connect: { [to]: v[to] } }
+                          row[k] = newv;
+                        }
+                      }
+                    }
+                  }
+
                   transactions.push(
                     prisma[table].create({
                       data: row,
@@ -106,15 +121,28 @@ export const execQuery = async (args: DBArg, prisma: any) => {
               }
 
               if (updates.length > 0) {
-                for (const item of updates) {
+                for (const row of updates) {
                   const where = {} as any;
                   for (const pk of pks) {
-                    where[pk.name] = item[pk.name];
-                    delete item[pk.name];
+                    where[pk.name] = row[pk.name];
+                    delete row[pk.name];
+                  }
+
+                  for (const [k, v] of Object.entries(row) as any) {
+                    const rel = rels[k];
+                    if (rel) {
+                      if (rel.type === 'has-one') {
+                        const to = rel.to.fields[0]
+                        if (!v.connect && v[to]) {
+                          let newv = { connect: { [to]: v[to] } }
+                          row[k] = newv;
+                        }
+                      }
+                    }
                   }
 
                   transactions.push(
-                    prisma[table].update({ data: item, where, select })
+                    prisma[table].update({ data: row, where, select })
                   );
                 }
               }
@@ -189,87 +217,9 @@ export const execQuery = async (args: DBArg, prisma: any) => {
           default?: any;
         }
       >;
-      const rels = {} as Record<
-        string,
-        | {
-            type: "has-many";
-            to: { table: string; fields: string[] };
-            from: { table: string; fields: string[] };
-          }
-        | {
-            type: "has-one";
-            to: { table: string; fields: string[] };
-            from: { table: string; fields: string[] };
-          }
-      >;
       if (schema_table) {
         if (action === "schema_rels") {
-          for (const col of schema_table.properties) {
-            if (
-              col.type === "field" &&
-              (!!col.array || (col.attributes && col.attributes?.length > 0))
-            ) {
-              if (col.array) {
-                if (typeof col.fieldType === "string") {
-                  const target = schema.findByType("model", {
-                    name: col.fieldType,
-                  });
-
-                  if (target) {
-                    const field = target.properties.find((e) => {
-                      if (e.type === "field" && e.fieldType === table) {
-                        return true;
-                      }
-                    });
-                    if (field && field.type === "field") {
-                      const rel = field.attributes?.find(
-                        (e) => e.kind === "field"
-                      );
-
-                      if (rel && rel.args) {
-                        const { field, ref } = getFieldAndRef(
-                          rel,
-                          target,
-                          table
-                        );
-
-                        if (target && ref) {
-                          rels[col.name] = {
-                            type: "has-many",
-                            to: field,
-                            from: ref,
-                          };
-                        }
-                      }
-                    }
-                  }
-                }
-              } else if (col.attributes) {
-                const rel = col.attributes.find(
-                  (e) => e.type === "attribute" && e.name === "relation"
-                );
-                if (rel && typeof col.fieldType === "string") {
-                  const target = schema.findByType("model", {
-                    name: col.fieldType,
-                  });
-                  const { field, ref } = getFieldAndRef(rel, target, table);
-
-                  rels[col.name] = {
-                    type: "has-one",
-                    to: {
-                      table: field.table,
-                      fields: ref.fields,
-                    },
-                    from: {
-                      table: ref.table,
-                      fields: field.fields,
-                    },
-                  };
-                }
-              }
-            }
-          }
-          return rels;
+          return getRels({ schema_table, schema, table })
         } else if (action === "schema_columns") {
           for (const col of schema_table.properties) {
             if (col.type === "field" && !col.array) {
@@ -389,3 +339,85 @@ const getFieldAndRef = (rel: any, target: any, table: string) => {
   }
   return { field, ref };
 };
+
+const getRels = ({ schema_table, schema, table }: { schema_table: any, schema: any, table: any }) => {
+  const rels = {} as Record<
+    string,
+    | {
+      type: "has-many";
+      to: { table: string; fields: string[] };
+      from: { table: string; fields: string[] };
+    }
+    | {
+      type: "has-one";
+      to: { table: string; fields: string[] };
+      from: { table: string; fields: string[] };
+    }
+  >;
+  for (const col of schema_table.properties) {
+    if (
+      col.type === "field" &&
+      (!!col.array || (col.attributes && col.attributes?.length > 0))
+    ) {
+      if (col.array) {
+        if (typeof col.fieldType === "string") {
+          const target = schema.findByType("model", {
+            name: col.fieldType,
+          });
+
+          if (target) {
+            const field = target.properties.find((e: any) => {
+              if (e.type === "field" && e.fieldType === table) {
+                return true;
+              }
+            });
+            if (field && field.type === "field") {
+              const rel = field.attributes?.find(
+                (e: any) => e.kind === "field"
+              );
+
+              if (rel && rel.args) {
+                const { field, ref } = getFieldAndRef(
+                  rel,
+                  target,
+                  table
+                );
+
+                if (target && ref) {
+                  rels[col.name] = {
+                    type: "has-many",
+                    to: field,
+                    from: ref,
+                  };
+                }
+              }
+            }
+          }
+        }
+      } else if (col.attributes) {
+        const rel = col.attributes.find(
+          (e: any) => e.type === "attribute" && e.name === "relation"
+        );
+        if (rel && typeof col.fieldType === "string") {
+          const target = schema.findByType("model", {
+            name: col.fieldType,
+          });
+          const { field, ref } = getFieldAndRef(rel, target, table);
+
+          rels[col.name] = {
+            type: "has-one",
+            to: {
+              table: field.table,
+              fields: ref.fields,
+            },
+            from: {
+              table: ref.table,
+              fields: field.fields,
+            },
+          };
+        }
+      }
+    }
+  }
+  return rels;
+}
