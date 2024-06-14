@@ -114,7 +114,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                     }
                   }
 
-                  if (row._marker) {
+                  if (typeof row._marker !== 'undefined') {
                     marker[transactions.length] = row._marker;
                     delete row._marker
                   }
@@ -148,7 +148,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                     }
                   }
 
-                  if (row._marker) {
+                  if (typeof row._marker !== 'undefined') {
                     marker[transactions.length] = row._marker;
                     delete row._marker
                   }
