@@ -64,6 +64,8 @@ export const execQuery = async (args: DBArg, prisma: any) => {
               const deletes = [] as any[];
               const exists_idx = new Set<number>();
 
+              const marker = {} as any;
+
               for (const row of data) {
                 const found = existing.find((item, idx) => {
                   for (const pk of pks) {
@@ -112,6 +114,11 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                     }
                   }
 
+                  if (row._marker) {
+                    marker[transactions.length] = row._marker;
+                    delete row._marker
+                  }
+
                   transactions.push(
                     prisma[table].create({
                       data: row,
@@ -141,6 +148,11 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                     }
                   }
 
+                  if (row._marker) {
+                    marker[transactions.length] = row._marker;
+                    delete row._marker
+                  }
+
                   transactions.push(
                     prisma[table].update({ data: row, where, select })
                   );
@@ -157,7 +169,14 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                 }
               }
 
-              return await prisma.$transaction(transactions);
+              const result = await prisma.$transaction(transactions);
+
+              if (Object.keys(marker).length > 0) {
+                for (const [k, v] of Object.entries(marker)) {
+                  result[k]._marker = v;
+                }
+              }
+              return result;
             }
           }
         }
