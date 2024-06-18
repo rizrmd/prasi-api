@@ -71,6 +71,8 @@ export const createServer = async () => {
     maxRequestBodySize: 1024 * 1024 * 128,
     async fetch(req) {
       const url = new URL(req.url) as URL;
+      url.pathname = url.pathname.replace(/\/+/g, '/')
+
       const prasi = {};
       const index = prodIndex(g.deploy.config.site_id, prasi);
 
