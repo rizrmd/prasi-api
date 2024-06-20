@@ -24,6 +24,11 @@ export const serveAPI = async (url: URL, req: Request) => {
       if (!req.headers.get("content-type")?.startsWith("multipart/form-data")) {
         try {
           const json = await req.json();
+
+          if (req.method === 'POST') {
+            console.log(req.method, found.raw, json);
+          }
+
           if (typeof json === "object") {
             if (Array.isArray(json)) {
               args = json;
@@ -45,7 +50,7 @@ export const serveAPI = async (url: URL, req: Request) => {
               }
             }
           }
-        } catch (e) {}
+        } catch (e) { }
       }
     }
 
