@@ -25,9 +25,6 @@ export const serveAPI = async (url: URL, req: Request) => {
         try {
           const json = await req.json();
 
-          if (req.method === 'POST') {
-            console.log(req.method, found.raw, json);
-          }
 
           if (typeof json === "object") {
             if (Array.isArray(json)) {
@@ -50,6 +47,7 @@ export const serveAPI = async (url: URL, req: Request) => {
               }
             }
           }
+
         } catch (e) { }
       }
     }
