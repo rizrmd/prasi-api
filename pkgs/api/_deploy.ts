@@ -16,6 +16,7 @@ export const _ = {
       | { type: "db-update"; url: string }
       | { type: "db-pull" }
       | { type: "db-gen" }
+      | { type: "db-ver" }
       | { type: "db-sync"; url: string }
       | { type: "restart" }
       | { type: "domain-add"; domain: string }
@@ -45,11 +46,22 @@ export const _ = {
             url: g.dburl || "-",
           },
         };
+      case "db-ver":
+        {
+          let file = Bun.file(dir("${g.datadir}/db-ver"));
+          if (!file) {
+            await Bun.write(dir("${g.datadir}/db-ver"), Date.now().toString());
+            file = Bun.file(dir("${g.datadir}/db-ver"));
+          }
+          return await file.text();
+        }
+        break;
       case "db-sync": {
         const res = await fetch(action.url);
         const text = await res.text();
         if (text) {
           await Bun.write(dir("app/db/prisma/schema.prisma"), text);
+          await Bun.write(dir("${g.datadir}/db-ver"), Date.now().toString());
         }
         return "ok";
       }
@@ -99,6 +111,10 @@ DATABASE_URL="${action.url}"
                   await $({ cwd: dir("app/db") })`bun install`;
                   await $({ cwd: dir("app/db") })`bun prisma db pull --force`;
                   await $({ cwd: dir("app/db") })`bun prisma generate`;
+                  await Bun.write(
+                    dir("${g.datadir}/db-ver"),
+                    Date.now().toString()
+                  );
                 } catch (e) {
                   console.error(e);
                 }
