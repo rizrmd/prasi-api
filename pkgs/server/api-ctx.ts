@@ -1,5 +1,4 @@
 import brotliPromise from "brotli-wasm"; // Import the default export
-import { gzipSync } from "bun";
 import { simpleHash } from "utils/cache";
 import { g } from "utils/global";
 const brotli = await brotliPromise;
