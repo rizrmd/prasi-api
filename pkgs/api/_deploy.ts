@@ -48,10 +48,10 @@ export const _ = {
         };
       case "db-ver":
         {
-          let file = Bun.file(dir("${g.datadir}/db-ver"));
+          let file = Bun.file(dir(`${g.datadir}/db-ver`));
           if (!file) {
-            await Bun.write(dir("${g.datadir}/db-ver"), Date.now().toString());
-            file = Bun.file(dir("${g.datadir}/db-ver"));
+            await Bun.write(dir(`${g.datadir}/db-ver`), Date.now().toString());
+            file = Bun.file(dir(`${g.datadir}/db-ver`));
           }
           return await file.text();
         }
@@ -61,7 +61,7 @@ export const _ = {
         const text = await res.text();
         if (text) {
           await Bun.write(dir("app/db/prisma/schema.prisma"), text);
-          await Bun.write(dir("${g.datadir}/db-ver"), Date.now().toString());
+          await Bun.write(dir(`${g.datadir}/db-ver`), Date.now().toString());
         }
         return "ok";
       }
@@ -112,7 +112,7 @@ DATABASE_URL="${action.url}"
                   await $({ cwd: dir("app/db") })`bun prisma db pull --force`;
                   await $({ cwd: dir("app/db") })`bun prisma generate`;
                   await Bun.write(
-                    dir("${g.datadir}/db-ver"),
+                    dir(`${g.datadir}/db-ver`),
                     Date.now().toString()
                   );
                 } catch (e) {
