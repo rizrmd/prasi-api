@@ -49,7 +49,7 @@ export const _ = {
       case "db-ver":
         {
           let file = Bun.file(dir(`${g.datadir}/db-ver`));
-          if (!file) {
+          if (!(await file.exists())) {
             await Bun.write(dir(`${g.datadir}/db-ver`), Date.now().toString());
             file = Bun.file(dir(`${g.datadir}/db-ver`));
           }
