@@ -48,7 +48,6 @@ export const _ = {
       case "db-sync": {
         const res = await fetch(action.url);
         const text = await res.text();
-        console.log(text);
         if (text) {
           await Bun.write(dir("app/db/prisma/schema.prisma"), text);
         }

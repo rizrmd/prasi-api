@@ -7,7 +7,6 @@ export const preparePrisma = async () => {
   if ((await existsAsync(dir("app/db/.env"))) && !g.db) {
     try {
       if (g.mode !== "dev") {
-        await $({ cwd: dir(`app/db`) })`bun prisma db pull --force`;
         await $({ cwd: dir(`app/db`) })`bun prisma generate`;
       }
       
