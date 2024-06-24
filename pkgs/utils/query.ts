@@ -47,7 +47,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
               }
             }
           }
-          const rels = getRels({ schema_table, schema, table })
+          const rels = getRels({ schema_table, schema, table });
           if (pks.length > 0) {
             if (Object.keys(where.length > 0)) {
               const select = {} as any;
@@ -100,23 +100,22 @@ export const execQuery = async (args: DBArg, prisma: any) => {
 
               if (inserts.length > 0) {
                 for (const row of inserts) {
-
                   for (const [k, v] of Object.entries(row) as any) {
                     const rel = rels[k];
                     if (rel) {
-                      if (rel.type === 'has-one') {
-                        const to = rel.to.fields[0]
+                      if (rel.type === "has-one") {
+                        const to = rel.to.fields[0];
                         if (!v.connect && v[to]) {
-                          let newv = { connect: { [to]: v[to] } }
+                          let newv = { connect: { [to]: v[to] } };
                           row[k] = newv;
                         }
                       }
                     }
                   }
 
-                  if (typeof row._marker !== 'undefined') {
+                  if (typeof row._marker !== "undefined") {
                     marker[transactions.length] = row._marker;
-                    delete row._marker
+                    delete row._marker;
                   }
 
                   transactions.push(
@@ -138,19 +137,19 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   for (const [k, v] of Object.entries(row) as any) {
                     const rel = rels[k];
                     if (rel) {
-                      if (rel.type === 'has-one') {
-                        const to = rel.to.fields[0]
+                      if (rel.type === "has-one") {
+                        const to = rel.to.fields[0];
                         if (!v.connect && v[to]) {
-                          let newv = { connect: { [to]: v[to] } }
+                          let newv = { connect: { [to]: v[to] } };
                           row[k] = newv;
                         }
                       }
                     }
                   }
 
-                  if (typeof row._marker !== 'undefined') {
+                  if (typeof row._marker !== "undefined") {
                     marker[transactions.length] = row._marker;
-                    delete row._marker
+                    delete row._marker;
                   }
 
                   transactions.push(
@@ -238,7 +237,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
       >;
       if (schema_table) {
         if (action === "schema_rels") {
-          return getRels({ schema_table, schema, table })
+          return getRels({ schema_table, schema, table });
         } else if (action === "schema_columns") {
           for (const col of schema_table.properties) {
             if (col.type === "field" && !col.array) {
@@ -265,6 +264,11 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                       : type.toLowerCase(),
                     default: default_val,
                   };
+                  const c = columns[col.name];
+                  if (c.type === c.db_type) {
+                    delete columns[col.name];
+                    console.log("schema_cols", attr);
+                  }
                 }
               } else if (typeof col.fieldType === "string") {
                 columns[col.name] = {
@@ -359,19 +363,27 @@ const getFieldAndRef = (rel: any, target: any, table: string) => {
   return { field, ref };
 };
 
-const getRels = ({ schema_table, schema, table }: { schema_table: any, schema: any, table: any }) => {
+const getRels = ({
+  schema_table,
+  schema,
+  table,
+}: {
+  schema_table: any;
+  schema: any;
+  table: any;
+}) => {
   const rels = {} as Record<
     string,
     | {
-      type: "has-many";
-      to: { table: string; fields: string[] };
-      from: { table: string; fields: string[] };
-    }
+        type: "has-many";
+        to: { table: string; fields: string[] };
+        from: { table: string; fields: string[] };
+      }
     | {
-      type: "has-one";
-      to: { table: string; fields: string[] };
-      from: { table: string; fields: string[] };
-    }
+        type: "has-one";
+        to: { table: string; fields: string[] };
+        from: { table: string; fields: string[] };
+      }
   >;
   for (const col of schema_table.properties) {
     if (
@@ -396,11 +408,7 @@ const getRels = ({ schema_table, schema, table }: { schema_table: any, schema: a
               );
 
               if (rel && rel.args) {
-                const { field, ref } = getFieldAndRef(
-                  rel,
-                  target,
-                  table
-                );
+                const { field, ref } = getFieldAndRef(rel, target, table);
 
                 if (target && ref) {
                   rels[col.name] = {
@@ -439,4 +447,4 @@ const getRels = ({ schema_table, schema, table }: { schema_table: any, schema: a
     }
   }
   return rels;
-}
+};
