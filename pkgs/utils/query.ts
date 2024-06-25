@@ -228,7 +228,15 @@ export const execQuery = async (args: DBArg, prisma: any) => {
       const view = schema.findAllByType("view", {}).map((e) => e?.name);
       return [...tables, ...view];
     } else {
-      const schema_table = schema.findByType("model", { name: table });
+      let schema_table = schema.findByType("model", { name: table });
+      let is_view = false;
+      if (!schema_table) {
+        const view = schema.findByType("view", { name: table });
+        if (view) {
+          is_view = true;
+          schema_table = view as any;
+        }
+      }
       const columns = {} as Record<
         string,
         {
@@ -257,19 +265,22 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                 const default_val = col.attributes.find(
                   (e) => e.name === "default"
                 );
-                const is_pk = col.attributes.find((e) => e.name === "id");
+                let is_pk = col.attributes.find((e) => e.name === "id");
 
                 let type = "String";
                 if (typeof col.fieldType === "string") type = col.fieldType;
 
                 if ((attr && attr.name !== "relation") || !attr) {
+                  const db_type = attr
+                    ? attr.name.toLowerCase()
+                    : type.toLowerCase();
+                  if (is_view && db_type === "unique") is_pk = true as any;
+
                   columns[col.name] = {
                     is_pk: !!is_pk,
                     type: type.toLowerCase(),
                     optional: !!col.optional,
-                    db_type: attr
-                      ? attr.name.toLowerCase()
-                      : type.toLowerCase(),
+                    db_type,
                     default: default_val,
                   };
                 }
