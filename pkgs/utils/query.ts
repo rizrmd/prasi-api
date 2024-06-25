@@ -33,6 +33,9 @@ export const execQuery = async (args: DBArg, prisma: any) => {
         const schema_path = dir("app/db/prisma/schema.prisma");
         const schema = createPrismaSchemaBuilder(await readAsync(schema_path));
         const schema_table = schema.findByType("model", { name: table });
+        const tables = schema
+          .findAllByType("model", {})
+          .map((e) => e?.name) as string[];
 
         if (schema_table) {
           let pks: Property[] = [];
@@ -47,7 +50,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
               }
             }
           }
-          const rels = getRels({ schema_table, schema, table });
+          const rels = getRels({ schema_table, schema, table, tables });
           if (pks.length > 0) {
             if (Object.keys(where.length > 0)) {
               const select = {} as any;
@@ -236,8 +239,12 @@ export const execQuery = async (args: DBArg, prisma: any) => {
         }
       >;
       if (schema_table) {
+        const tables = schema
+          .findAllByType("model", {})
+          .map((e) => e?.name) as string[];
+
         if (action === "schema_rels") {
-          return getRels({ schema_table, schema, table });
+          return getRels({ schema_table, schema, table, tables });
         } else if (action === "schema_columns") {
           for (const col of schema_table.properties) {
             if (col.type === "field" && !col.array) {
@@ -264,13 +271,11 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                       : type.toLowerCase(),
                     default: default_val,
                   };
-                  const c = columns[col.name];
-                  if (c.type === c.db_type) {
-                    delete columns[col.name];
-                    console.log("schema_cols", attr);
-                  }
                 }
-              } else if (typeof col.fieldType === "string") {
+              } else if (
+                typeof col.fieldType === "string" &&
+                !tables.includes(col.fieldType)
+              ) {
                 columns[col.name] = {
                   is_pk: false,
                   type: col.fieldType.toLowerCase(),
@@ -367,10 +372,12 @@ const getRels = ({
   schema_table,
   schema,
   table,
+  tables,
 }: {
   schema_table: any;
-  schema: any;
+  schema: ReturnType<typeof createPrismaSchemaBuilder>;
   table: any;
+  tables: string[];
 }) => {
   const rels = {} as Record<
     string,
@@ -388,7 +395,9 @@ const getRels = ({
   for (const col of schema_table.properties) {
     if (
       col.type === "field" &&
-      (!!col.array || (col.attributes && col.attributes?.length > 0))
+      (!!col.array ||
+        (col.attributes && col.attributes?.length > 0) ||
+        tables.includes(col.fieldType))
     ) {
       if (col.array) {
         if (typeof col.fieldType === "string") {
@@ -442,6 +451,33 @@ const getRels = ({
               fields: field.fields,
             },
           };
+        }
+      } else {
+        const target = schema.findByType("model", {
+          name: col.fieldType,
+        });
+        if (target) {
+          const to = target.properties.find(
+            (e) => e.type === "field" && e.fieldType === table
+          );
+          if (to && to.type === "field" && (to.attributes?.length || 0) > 0) {
+            const rel = to.attributes?.find((e) => e.name === "relation");
+            if (rel) {
+              const { field, ref } = getFieldAndRef(rel, target, table);
+
+              rels[col.name] = {
+                type: "has-one",
+                to: {
+                  table: field.table,
+                  fields: ref.fields,
+                },
+                from: {
+                  table: ref.table,
+                  fields: field.fields,
+                },
+              };
+            }
+          }
         }
       }
     }
