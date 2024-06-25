@@ -225,7 +225,8 @@ export const execQuery = async (args: DBArg, prisma: any) => {
     const schema = createPrismaSchemaBuilder(await readAsync(schema_path));
     if (action === "schema_tables") {
       const tables = schema.findAllByType("model", {}).map((e) => e?.name);
-      return tables || [];
+      const view = schema.findAllByType("view", {}).map((e) => e?.name);
+      return [...tables, ...view];
     } else {
       const schema_table = schema.findByType("model", { name: table });
       const columns = {} as Record<
