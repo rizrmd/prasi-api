@@ -13,7 +13,7 @@ export const _ = {
     const { req, res } = apiContext(this);
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Headers", "content-type");
-    const gz = g.deploy.gz;
+    const gz = g.deploy.content;
     const parts = req.params._.split("/");
 
     const action = {

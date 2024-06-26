@@ -27,7 +27,7 @@ export const deploy = {
     console.log(`Loading site: ${this.config.site_id} ${ts}`);
 
     try {
-      g.deploy.gz = JSON.parse(
+      g.deploy.content = JSON.parse(
         decoder.decode(
           await gunzipAsync(
             new Uint8Array(
@@ -37,45 +37,45 @@ export const deploy = {
         )
       );
 
-      if (g.deploy.gz) {
+      if (g.deploy.content) {
         if (exists(dir("public"))) {
           await removeAsync(dir("public"));
-          if (g.deploy.gz.public) {
+          if (g.deploy.content.public) {
             await dirAsync(dir("public"));
-            for (const [k, v] of Object.entries(g.deploy.gz.public)) {
+            for (const [k, v] of Object.entries(g.deploy.content.public)) {
               await writeAsync(dir(`public/${k}`), v);
             }
           }
         }
-        for (const page of g.deploy.gz.layouts) {
+        for (const page of g.deploy.content.layouts) {
           if (page.is_default_layout) {
             g.deploy.layout = page.content_tree;
             break;
           }
         }
-        if (!g.deploy.layout && g.deploy.gz.layouts.length > 0) {
-          g.deploy.layout = g.deploy.gz.layouts[0].content_tree;
+        if (!g.deploy.layout && g.deploy.content.layouts.length > 0) {
+          g.deploy.layout = g.deploy.content.layouts[0].content_tree;
         }
 
         g.deploy.router = createRouter();
         g.deploy.pages = {};
-        for (const page of g.deploy.gz.pages) {
+        for (const page of g.deploy.content.pages) {
           g.deploy.pages[page.id] = page;
           g.deploy.router.insert(page.url, page);
         }
 
         g.deploy.comps = {};
-        for (const comp of g.deploy.gz.comps) {
+        for (const comp of g.deploy.content.comps) {
           g.deploy.comps[comp.id] = comp.content_tree;
         }
 
-        if (g.deploy.gz.code.server) {
+        if (g.deploy.content.code.server) {
           setTimeout(async () => {
-            if (g.deploy.gz) {
+            if (g.deploy.content) {
               delete require.cache[dir(`app/web/server/index.js`)];
               await removeAsync(dir(`app/web/server`));
               await dirAsync(dir(`app/web/server`));
-              for (const [k, v] of Object.entries(g.deploy.gz.code.server)) {
+              for (const [k, v] of Object.entries(g.deploy.content.code.server)) {
                 await writeAsync(dir(`app/web/server/${k}`), v);
               }
 
@@ -139,7 +139,7 @@ export const deploy = {
         config: { deploy: { ts: "" }, site_id: "" },
         init: false,
         raw: null,
-        gz: null,
+        content: null,
         server: null,
       };
     }

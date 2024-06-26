@@ -34,7 +34,7 @@ export const serveAPI = async (url: URL, req: Request) => {
                 }
               }
             } else {
-              for (const [k, v] of Object.entries(json)) {
+              for (const [k, v] of Object.entries(json as object)) {
                 params[k] = v;
               }
               for (const [k, v] of Object.entries(params)) {

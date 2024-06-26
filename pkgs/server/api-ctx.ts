@@ -1,7 +1,6 @@
-import brotliPromise from "brotli-wasm"; // Import the default export
 import { simpleHash } from "utils/cache";
 import { g } from "utils/global";
-const brotli = await brotliPromise;
+import { loadCachedBr } from "utils/br-load";
 
 const parseQueryParams = (ctx: any) => {
   const pageHref = ctx.req.url;
@@ -29,7 +28,7 @@ export const apiContext = (ctx: any) => {
     res: {
       ...ctx.res,
       send: (body, cache_accept?: string) => {
-        ctx.res = createResponse(ctx.res, body, cache_accept);
+        ctx.res = createResponse(body, { cache_accept, res: ctx.res });
       },
       sendStatus: (code: number) => {
         ctx.res._status = code;
@@ -50,30 +49,45 @@ export const apiContext = (ctx: any) => {
 };
 
 export const createResponse = (
-  existingRes: any,
   body: any,
-  cache_accept?: string
+  opt?: {
+    cache_accept?: string;
+    headers?: any;
+    res?: any;
+  }
 ) => {
   const status =
-    typeof existingRes._status === "number" ? existingRes._status : undefined;
+    typeof opt?.res?._status === "number" ? opt?.res?._status : undefined;
 
   let content: any = typeof body === "string" ? body : JSON.stringify(body);
-  const headers = {} as Record<string, string>;
-  if (cache_accept) {
-    if (g.mode === "prod" && cache_accept.toLowerCase().includes("br")) {
+  const headers = { ...(opt?.headers || {}) } as Record<string, string>;
+  if (opt?.cache_accept) {
+    let cached = false;
+    if (opt.cache_accept.toLowerCase().includes("br")) {
       const content_hash = simpleHash(content);
 
+      if (!g.cache.br[content_hash]) {
+        loadCachedBr(content_hash, content);
+      }
+
       if (g.cache.br[content_hash]) {
+        cached = true;
         content = g.cache.br[content_hash];
         headers["content-encoding"] = "br";
-      } else {
-        if (!g.cache.br_timeout.has(content_hash)) {
-          g.cache.br_timeout.add(content_hash);
-          setTimeout(() => {
-            g.cache.br[content_hash] = brotli.compress(Buffer.from(content));
-            g.cache.br_timeout.delete(content_hash);
-          });
-        }
+      }
+    }
+
+    if (!cached && opt.cache_accept.toLowerCase().includes("gz")) {
+      const content_hash = simpleHash(content);
+
+      if (!g.cache.gz[content_hash]) {
+        g.cache.gz[content_hash] = Bun.gzipSync(content);
+      }
+
+      if (g.cache.gz[content_hash]) {
+        cached = true;
+        content = g.cache.gz[content_hash];
+        headers["content-encoding"] = "gzip";
       }
     }
   }
@@ -90,10 +104,12 @@ export const createResponse = (
   for (const [k, v] of Object.entries(headers)) {
     res.headers.append(k, v);
   }
-  const cur = existingRes as Response;
-  cur.headers.forEach((value, key) => {
-    res.headers.append(key, value);
-  });
+  const cur = opt?.res as Response;
+  if (cur) {
+    cur.headers.forEach((value, key) => {
+      res.headers.append(key, value);
+    });
+  }
 
   if (typeof body === "object" && !res.headers.has("content-type")) {
     res.headers.append("content-type", "application/json");

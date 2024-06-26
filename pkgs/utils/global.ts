@@ -70,7 +70,8 @@ export const g = global as unknown as {
   };
   cache: {
     br: Record<string, Uint8Array>;
-    br_timeout: Set<string>;
+    br_progress: { pending: Record<string, any>; running: boolean; timeout: any };
+    gz: Record<string, Uint8Array>;
   };
   createServer: (
     arg: PrasiServer & { api: any; db: any }
@@ -85,7 +86,7 @@ export const g = global as unknown as {
       string,
       { id: string; url: string; name: true; content_tree: any }
     >;
-    gz: null | {
+    content: null | {
       layouts: SinglePage[];
       pages: SinglePage[];
       site: any;

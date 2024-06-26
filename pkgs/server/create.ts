@@ -14,7 +14,12 @@ export const createServer = async () => {
   g.api = {};
   g.cache = {
     br: {},
-    br_timeout: new Set(),
+    gz: {},
+    br_progress: {
+      pending: {},
+      running: false,
+      timeout: null,
+    },
   };
   const scan = async (path: string, root?: string) => {
     const apis = await listAsync(path);
@@ -71,7 +76,7 @@ export const createServer = async () => {
     maxRequestBodySize: 1024 * 1024 * 128,
     async fetch(req) {
       const url = new URL(req.url) as URL;
-      url.pathname = url.pathname.replace(/\/+/g, '/')
+      url.pathname = url.pathname.replace(/\/+/g, "/");
 
       const prasi = {};
       const index = prodIndex(g.deploy.config.site_id, prasi);
@@ -89,12 +94,13 @@ export const createServer = async () => {
             return await serveWeb({
               content: index.render(),
               pathname: "index.html",
+              cache_accept: req.headers.get("accept-encoding") || "",
             });
           }
 
-          if (g.deploy.gz) {
-            const core = g.deploy.gz.code.core;
-            const site = g.deploy.gz.code.site;
+          if (g.deploy.content) {
+            const core = g.deploy.content.code.core;
+            const site = g.deploy.content.code.site;
 
             let pathname = url.pathname;
             if (url.pathname[0] === "/") pathname = pathname.substring(1);
@@ -107,6 +113,7 @@ export const createServer = async () => {
               return await serveWeb({
                 content: index.render(),
                 pathname: "index.html",
+                cache_accept: req.headers.get("accept-encoding") || "",
               });
             }
 
@@ -116,7 +123,11 @@ export const createServer = async () => {
             else if (site[pathname]) content = site[pathname];
 
             if (content) {
-              return await serveWeb({ content, pathname });
+              return await serveWeb({
+                content,
+                pathname,
+                cache_accept: req.headers.get("accept-encoding") || "",
+              });
             }
           }
         }

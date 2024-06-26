@@ -1,9 +1,14 @@
 import mime from "mime";
+import { createResponse } from "service-srv";
 
-export const serveWeb = async (arg: { pathname: string; content: string }) => {
+export const serveWeb = async (arg: {
+  pathname: string;
+  content: string;
+  cache_accept: string;
+}) => {
   const type = mime.getType(arg.pathname);
-
-  return new Response(arg.content, {
+  return createResponse(arg.content, {
+    cache_accept: arg.cache_accept,
     headers: !type ? undefined : { "content-type": type },
   });
 };
