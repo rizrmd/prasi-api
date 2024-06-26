@@ -5,7 +5,7 @@ import { apiContext } from "service-srv";
 import { deploy } from "utils/deploy";
 import { dir } from "utils/dir";
 import { g } from "utils/global";
-import { parse } from "utils/parse-env";
+import { genEnv, parseEnv } from "utils/parse-env";
 import { restartServer } from "utils/restart";
 
 export const _ = {
@@ -68,12 +68,11 @@ export const _ = {
       case "db-update":
         if (action.url) {
           g.dburl = action.url;
-          await Bun.write(
-            dir("app/db/.env"),
-            `\
-DATABASE_URL="${action.url}"
-`
-          );
+          const env = genEnv({
+            ...parseEnv(await Bun.file(dir(".env")).text()),
+            DATABASE_URL: action.url,
+          });
+          await Bun.write(dir(".env"), env);
         }
         return "ok";
       case "db-gen":
@@ -88,9 +87,9 @@ DATABASE_URL="${action.url}"
         break;
       case "db-pull":
         {
-          const env = await readAsync(dir("app/db/.env"));
+          const env = await readAsync(dir(".env"));
           if (env) {
-            const ENV = parse(env);
+            const ENV = parseEnv(env);
             if (typeof ENV.DATABASE_URL === "string") {
               const type = ENV.DATABASE_URL.split("://").shift();
               if (type) {
@@ -194,7 +193,7 @@ export const downloadFile = async (
       _url.hostname = "127.0.0.1";
     }
     g.log.info(`Downloading ${url} to ${filePath}`);
-    const res = await fetch(_url);
+    const res = await fetch(_url as any);
     if (res.body) {
       const file = Bun.file(filePath);
 

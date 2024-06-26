@@ -11,6 +11,7 @@ import { prepareAPITypes } from "./server/prep-api-ts";
 import { config } from "./utils/config";
 import { g } from "./utils/global";
 import { createLogger } from "./utils/logger";
+import { genEnv, parseEnv } from "utils/parse-env";
 
 g.mode = process.argv.includes("dev") ? "dev" : "prod";
 g.datadir = g.mode === "prod" ? "../data" : ".data";
@@ -29,7 +30,8 @@ if (!(await existsAsync(dir("app/srv")))) {
 
 if (!process.env.PORT) {
   g.port = 3000;
-  await Bun.write(".env", `PORT=${g.port}`);
+  const env = genEnv({ ...parseEnv(".env"), PORT: g.port });
+  await Bun.write(".env", env);
 } else {
   g.port = parseInt(process.env.PORT);
 }
@@ -45,7 +47,6 @@ if (g.db) {
 await config.init();
 
 g.log.info(g.mode === "dev" ? "DEVELOPMENT" : "PRODUCTION");
-
 
 await deploy.init();
 if (g.mode === "dev") {

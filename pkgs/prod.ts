@@ -4,6 +4,7 @@ import exitHook from "exit-hook";
 import { existsAsync } from "fs-jetpack";
 import { dir } from "utils/dir";
 import { checkPort, randomBetween } from "utils/ensure";
+import "dotenv/config";
 
 let port = 0;
 
@@ -35,7 +36,7 @@ const main = {
 
 console.log("Process Manager running at port:", port);
 
-if (await existsAsync(dir("app/db/.env"))) {
+if (process.env.DATABASE_URL) {
   if (!(await existsAsync(dir("node_modules/.prisma")))) {
     try {
       await $({ cwd: dir(`app/db`) })`bun install`;

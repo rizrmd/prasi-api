@@ -20,7 +20,7 @@ function removeQuotes(str: string) {
 }
 
 /** Parse an envfile string. */
-export function parse(src: string): Data {
+export function parseEnv(src: string): Data {
   const result: Data = {};
   const lines = splitInLines(src);
   for (const line of lines) {
@@ -35,7 +35,7 @@ export function parse(src: string): Data {
 }
 
 /** Turn an object into an envfile string. */
-export function stringify(obj: Input): string {
+export function genEnv(obj: Input): string {
   let result = "";
   for (const [key, value] of Object.entries(obj)) {
     if (key) {

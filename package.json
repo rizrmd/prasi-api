@@ -16,12 +16,13 @@
     "bun-types": "latest"
   },
   "peerDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.5.2"
   },
   "dependencies": {
     "brotli-wasm": "^2.0.1",
+    "dotenv": "^16.4.5",
     "exit-hook": "^4.0.0",
-    "firebase-admin": "^12.0.0",
-    "prisma": "^5.8.1"
+    "firebase-admin": "^12.2.0",
+    "prisma": "^5.16.0"
   }
 }
