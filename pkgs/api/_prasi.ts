@@ -1,4 +1,4 @@
-import { apiContext } from "service-srv";
+import { apiContext, createResponse } from "service-srv";
 import { SinglePage, g } from "utils/global";
 import { gzipAsync } from "utils/gzip";
 import { getContent } from "../server/prep-api-ts";
@@ -61,13 +61,16 @@ export const _ = {
       page: async () => {
         const page = g.deploy.pages[parts[1]];
         if (page) {
-          return await responseCompressed(
-            req,
+          return createResponse(
             JSON.stringify({
               id: page.id,
               root: page.content_tree,
               url: page.url,
-            })
+            }),
+            {
+              cache_accept: req.headers.get("accept-encoding") || "",
+              high_compression: true,
+            }
           );
         }
       },
@@ -118,7 +121,10 @@ export const _ = {
           } catch (e) {}
         }
 
-        return await responseCompressed(req, JSON.stringify(comps));
+        return createResponse(JSON.stringify(comps), {
+          cache_accept: req.headers.get("accept-encoding") || "",
+          high_compression: true,
+        });
       },
       "load.json": async () => {
         res.setHeader("content-type", "application/json");
