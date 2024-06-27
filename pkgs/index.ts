@@ -30,7 +30,11 @@ if (!(await existsAsync(dir("app/srv")))) {
 
 if (!process.env.PORT) {
   g.port = 3000;
-  const env = genEnv({ ...parseEnv(".env"), PORT: g.port });
+  const env = genEnv({
+    ...parseEnv(".env"),
+    ...parseEnv(dir("app/db/.env")),
+    PORT: g.port,
+  });
   await Bun.write(".env", env);
 } else {
   g.port = parseInt(process.env.PORT);
