@@ -6,7 +6,6 @@ import { simpleHash } from "./cache";
 const encoder = new TextEncoder();
 const brotli = await brotliPromise;
 export const loadCachedBr = (hash: string, content: string) => {
-  console.log(!g.cache.br[hash]);
   if (!g.cache.br[hash]) {
     if (!g.cache.br_progress.pending[hash]) {
       g.cache.br_progress.pending[hash] = content;
