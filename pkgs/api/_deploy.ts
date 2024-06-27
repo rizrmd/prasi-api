@@ -108,8 +108,11 @@ export const _ = {
                 );
 
                 try {
+                  await Bun.write(
+                    dir("app/db/.env"),
+                    `DATABASE_URL=${process.env.DATABASE_URL}`
+                  );
                   await $({ cwd: dir("app/db") })`bun install`;
-                  await $({})`cp -f .env app/db`;
                   await $({ cwd: dir("app/db") })`bun prisma db pull --force`;
                   await $({ cwd: dir("app/db") })`bun prisma generate`;
                   await Bun.write(

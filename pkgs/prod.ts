@@ -38,8 +38,11 @@ console.log("Process Manager running at port:", port);
 if (process.env.DATABASE_URL) {
   if (!(await existsAsync(dir("node_modules/.prisma")))) {
     try {
+      await Bun.write(
+        dir("app/db/.env"),
+        `DATABASE_URL=${process.env.DATABASE_URL}`
+      );
       await $({ cwd: dir(`app/db`) })`bun install`;
-      await $({  })`cp -f .env app/db`;
       await $({ cwd: dir(`app/db`) })`bun prisma db pull --force`;
       await $({ cwd: dir(`app/db`) })`bun prisma generate`;
     } catch (e) {
