@@ -4,6 +4,7 @@ import { deploy } from "utils/deploy";
 import { startDevWatcher } from "utils/dev-watcher";
 import { dir } from "utils/dir";
 import { ensureNotRunning } from "utils/ensure";
+import { genEnv, parseEnv } from "utils/parse-env";
 import { preparePrisma } from "utils/prisma";
 import { generateAPIFrm } from "./server/api-frm";
 import { createServer } from "./server/create";
@@ -11,7 +12,12 @@ import { prepareAPITypes } from "./server/prep-api-ts";
 import { config } from "./utils/config";
 import { g } from "./utils/global";
 import { createLogger } from "./utils/logger";
-import { genEnv, parseEnv } from "utils/parse-env";
+
+let db_env: any = {};
+try {
+  db_env = parseEnv(await Bun.file(dir("app/db/.env")).text());
+  process.env.DATABASE_URL = db_env.DATABASE_URL;
+} catch (e) {}
 
 g.mode = process.argv.includes("dev") ? "dev" : "prod";
 g.datadir = g.mode === "prod" ? "../data" : ".data";
@@ -30,11 +36,6 @@ if (!(await existsAsync(dir("app/srv")))) {
 
 if (!process.env.PORT) {
   g.port = 3000;
-  let db_env: any = {};
-  try {
-    db_env = parseEnv(await Bun.file(dir("app/db/.env")).text());
-    process.env.DATABASE_URL = db_env.DATABASE_URL;
-  } catch (e) {}
 
   const env = genEnv({
     PORT: g.port,
