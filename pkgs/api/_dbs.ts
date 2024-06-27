@@ -10,7 +10,7 @@ export const _ = {
 
       try {
         const result = await execQuery(body, g.db);
-        res.send(result);
+        return result;
       } catch (e: any) {
         console.log("_dbs error", body, e.message);
         res.sendStatus(500);

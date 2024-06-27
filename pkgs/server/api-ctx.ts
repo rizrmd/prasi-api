@@ -62,6 +62,7 @@ export const createResponse = (
 
   let content: any = typeof body === "string" ? body : JSON.stringify(body);
   const headers = { ...(opt?.headers || {}) } as Record<string, string>;
+
   if (opt?.cache_accept) {
     let cached = false;
     if (
