@@ -4,7 +4,6 @@ import exitHook from "exit-hook";
 import { existsAsync } from "fs-jetpack";
 import { dir } from "utils/dir";
 import { checkPort, randomBetween } from "utils/ensure";
-import "dotenv/config";
 
 let port = 0;
 
