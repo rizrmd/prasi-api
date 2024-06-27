@@ -11,6 +11,7 @@ import { g } from "./global";
 import { gunzipAsync } from "./gzip";
 import { createRouter } from "radix3";
 import { prodIndex } from "./prod-index";
+import { startBrCompress } from "./br-load";
 
 const decoder = new TextDecoder();
 export const deploy = {
@@ -38,6 +39,17 @@ export const deploy = {
       );
 
       if (g.deploy.content) {
+        g.cache = {
+          br: {},
+          gz: {},
+          br_progress: {
+            pending: {},
+            running: false,
+            timeout: null,
+          },
+        };
+        startBrCompress();
+
         if (exists(dir("public"))) {
           await removeAsync(dir("public"));
           if (g.deploy.content.public) {
@@ -75,7 +87,9 @@ export const deploy = {
               delete require.cache[dir(`app/web/server/index.js`)];
               await removeAsync(dir(`app/web/server`));
               await dirAsync(dir(`app/web/server`));
-              for (const [k, v] of Object.entries(g.deploy.content.code.server)) {
+              for (const [k, v] of Object.entries(
+                g.deploy.content.code.server
+              )) {
                 await writeAsync(dir(`app/web/server/${k}`), v);
               }
 

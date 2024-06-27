@@ -12,15 +12,6 @@ import { prodIndex } from "utils/prod-index";
 export const createServer = async () => {
   g.router = createRouter({ strictTrailingSlash: true });
   g.api = {};
-  g.cache = {
-    br: {},
-    gz: {},
-    br_progress: {
-      pending: {},
-      running: false,
-      timeout: null,
-    },
-  };
   const scan = async (path: string, root?: string) => {
     const apis = await listAsync(path);
     if (apis) {
