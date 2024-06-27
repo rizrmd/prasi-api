@@ -6,6 +6,7 @@ import mime from "mime";
 
 const cache = {
   route: null as any,
+  comps: {} as Record<string, any>,
 };
 export const _ = {
   url: "/_prasi/**",
@@ -89,13 +90,32 @@ export const _ = {
       },
       comp: async () => {
         const comps = {} as Record<string, any>;
+
+        const pending = new Set<string>();
         if (req.params.ids) {
           for (const id of req.params.ids) {
             const comp = g.deploy.comps[id];
             if (comp) {
               comps[id] = comp;
+            } else if (cache.comps[id]) {
+              comps[id] = cache.comps[id];
+            } else {
+              pending.add(id);
             }
           }
+        }
+
+        if (pending.size > 0) {
+          try {
+            const res = await fetch(
+              `https://prasi.avolut.com/prod/452e91b8-c474-4ed2-9c43-447ac8778aa8/_prasi/comp`,
+              { method: "POST", body: JSON.stringify({ ids: [...pending] }) }
+            );
+            for (const [k, v] of Object.entries((await res.json()) as any)) {
+              cache.comps[k] = v;
+              comps[k] = v;
+            }
+          } catch (e) {}
         }
 
         return await responseCompressed(req, JSON.stringify(comps));
