@@ -54,7 +54,7 @@ export const createResponse = (
     cache_accept?: string;
     headers?: any;
     res?: any;
-    br?: boolean;
+    high_compression?: boolean;
   }
 ) => {
   const status =
@@ -64,7 +64,10 @@ export const createResponse = (
   const headers = { ...(opt?.headers || {}) } as Record<string, string>;
   if (opt?.cache_accept) {
     let cached = false;
-    if (opt?.br && opt.cache_accept.toLowerCase().includes("br")) {
+    if (
+      opt?.high_compression &&
+      opt.cache_accept.toLowerCase().includes("br")
+    ) {
       const content_hash = simpleHash(content);
 
       if (!g.cache.br[content_hash]) {
@@ -78,18 +81,23 @@ export const createResponse = (
       }
     }
 
-    if (!cached && opt.cache_accept.toLowerCase().includes("gz")) {
-      const content_hash = simpleHash(content);
+    if (opt?.high_compression) {
+      if (!cached && opt.cache_accept.toLowerCase().includes("gz")) {
+        const content_hash = simpleHash(content);
 
-      if (!g.cache.gz[content_hash]) {
-        g.cache.gz[content_hash] = Bun.gzipSync(content);
-      }
+        if (!g.cache.gz[content_hash]) {
+          g.cache.gz[content_hash] = Bun.gzipSync(content);
+        }
 
-      if (g.cache.gz[content_hash]) {
-        cached = true;
-        content = g.cache.gz[content_hash];
-        headers["content-encoding"] = "gzip";
+        if (g.cache.gz[content_hash]) {
+          cached = true;
+          content = g.cache.gz[content_hash];
+          headers["content-encoding"] = "gzip";
+        }
       }
+    } else {
+      content = Bun.gzipSync(content);
+      headers["content-encoding"] = "gzip";
     }
   }
 
