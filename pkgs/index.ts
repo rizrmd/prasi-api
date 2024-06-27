@@ -30,13 +30,13 @@ if (!(await existsAsync(dir("app/srv")))) {
 
 if (!process.env.PORT) {
   g.port = 3000;
-  let db_env = {};
+  let db_env: any = {};
   try {
     db_env = parseEnv(await Bun.file(dir("app/db/.env")).text());
+    process.env.DATABASE_URL = db_env.DATABASE_URL;
   } catch (e) {}
 
   const env = genEnv({
-    ...db_env,
     PORT: g.port,
   });
   await Bun.write(".env", env);
