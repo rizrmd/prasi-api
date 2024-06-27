@@ -45,7 +45,7 @@ export const serveAPI = async (url: URL, req: Request) => {
               }
             }
           }
-        } catch (e) { 
+        } catch (e) {
           console.log(e);
         }
       }
@@ -65,7 +65,9 @@ export const serveAPI = async (url: URL, req: Request) => {
     }
 
     if (finalResponse) {
-      return createResponse(current.res, finalResponse);
+      return createResponse(finalResponse, {
+        res: current.res,
+      });
     }
 
     return current.res;

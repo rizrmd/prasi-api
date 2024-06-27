@@ -53,7 +53,8 @@ export const _ = {
             await Bun.write(dir(`${g.datadir}/db-ver`), Date.now().toString());
             file = Bun.file(dir(`${g.datadir}/db-ver`));
           }
-          return await file.text();
+          const res = await file.text();
+          return res;
         }
         break;
       case "db-sync": {
