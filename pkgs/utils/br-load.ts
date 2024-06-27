@@ -38,6 +38,8 @@ const recurseCompressBr = () => {
       delete g.cache.br_progress.pending[hash];
       g.cache.br_progress.running = false;
       recurseCompressBr();
+    } else {
+      console.log("brotli cache finished");
     }
   }, 50);
 };
