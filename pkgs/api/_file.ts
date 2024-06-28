@@ -120,7 +120,6 @@ export const _ = {
     }
 
     const path = dir(`${g.datadir}/files/${rpath}`);
-    console.log(path);
     const file = Bun.file(path);
 
     if (await file.exists()) {
