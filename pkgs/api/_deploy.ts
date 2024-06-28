@@ -88,7 +88,7 @@ export const _ = {
         break;
       case "db-pull":
         {
-          const env = await readAsync(dir(".env"));
+          const env = await readAsync(dir("app/db/.env"));
           if (env) {
             const ENV = parseEnv(env);
             if (typeof ENV.DATABASE_URL === "string") {
