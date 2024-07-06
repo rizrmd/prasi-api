@@ -49,6 +49,9 @@ export const g = global as unknown as {
   notif: {
     db: Database;
   };
+  compress: {
+    mode: "all" | "only-gz" | "off";
+  };
   api: Record<string, SingleRoute>;
   api_gen: {
     "load.json": string;
@@ -70,7 +73,11 @@ export const g = global as unknown as {
   };
   cache: {
     br: Record<string, Uint8Array>;
-    br_progress: { pending: Record<string, any>; running: boolean; timeout: any };
+    br_progress: {
+      pending: Record<string, any>;
+      running: boolean;
+      timeout: any;
+    };
     gz: Record<string, Uint8Array>;
   };
   createServer: (

@@ -178,6 +178,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   result[k]._marker = v;
                 }
               }
+              console.log(result);
               return result;
             }
           }

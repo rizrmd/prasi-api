@@ -19,6 +19,7 @@ try {
   process.env.DATABASE_URL = db_env.DATABASE_URL;
 } catch (e) {}
 
+g.compress = { mode: "all" };
 g.mode = process.argv.includes("dev") ? "dev" : "prod";
 g.datadir = g.mode === "prod" ? "../data" : ".data";
 

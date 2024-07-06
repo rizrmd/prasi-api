@@ -21,6 +21,18 @@ export const _ = {
       _: () => {
         res.send({ prasi: "v2" });
       },
+      compress: async () => {
+        const last = parts.pop();
+        if (last === 'all') {
+          g.compress.mode = "all";
+        }
+        if (last === 'only-gz') {
+          g.compress.mode = "only-gz";
+        }
+        if (last === 'off') {
+          g.compress.mode = "off";
+        }
+      },
       code: async () => {
         if (gz) {
           const path = parts.slice(1).join("/");
