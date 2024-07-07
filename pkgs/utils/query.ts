@@ -102,6 +102,8 @@ export const execQuery = async (args: DBArg, prisma: any) => {
               }
 
               if (inserts.length > 0) {
+                console.log("inserts", inserts);
+
                 for (const row of inserts) {
                   for (const [k, v] of Object.entries(row) as any) {
                     const rel = rels[k];
@@ -130,6 +132,8 @@ export const execQuery = async (args: DBArg, prisma: any) => {
               }
 
               if (updates.length > 0) {
+                console.log("updates", updates);
+
                 for (const row of updates) {
                   const where = {} as any;
                   for (const pk of pks) {
@@ -162,6 +166,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
               }
 
               if (deletes.length > 0) {
+                console.log("deletes", deletes);
                 for (const item of deletes) {
                   const where = {} as any;
                   for (const pk of pks) {
