@@ -17,17 +17,19 @@ export const execQuery = async (args: DBArg, prisma: any) => {
 
   if (action === "batch_upsert") {
     const { arg } = params as unknown as {
-      arg?: {
-        table: string;
-        where: any;
-        data: any[];
-        mode: "field" | "relation";
-      };
+      arg?: object;
     };
-    console.log(arg);
-    if (arg) {
-      const { table, where, data } = arg;
-      const mode = arg.mode || "field";
+
+    const body = (Array.isArray(arg) ? arg[0] : arg) as {
+      table: string;
+      where: any;
+      data: any[];
+      mode: "field" | "relation";
+    };
+
+    if (body) {
+      const { table, where, data } = body;
+      const mode = body.mode || "field";
       console.log("a", table, where, data);
 
       if (table && where && data) {
