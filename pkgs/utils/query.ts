@@ -17,27 +17,22 @@ export const execQuery = async (args: DBArg, prisma: any) => {
 
   if (action === "batch_upsert") {
     const { arg } = params as unknown as {
-      arg?: object;
+      arg?: {
+        table: string;
+        where: any;
+        data: any[];
+        mode: "field" | "relation";
+      };
     };
-
-    const body = (Array.isArray(arg) ? arg[0] : arg) as {
-      table: string;
-      where: any;
-      data: any[];
-      mode: "field" | "relation";
-    };
-
-    if (body) {
-      const { table, where, data } = body;
-      const mode = body.mode || "field";
-
+    if (arg) {
+      const { table, where, data } = arg;
+      const mode = arg.mode || "field";
       if (table && where && data) {
         const transactions = [];
 
         const schema_path = dir("app/db/prisma/schema.prisma");
         const schema = createPrismaSchemaBuilder(await readAsync(schema_path));
         const schema_table = schema.findByType("model", { name: table });
-
         const tables = schema
           .findAllByType("model", {})
           .map((e) => e?.name) as string[];
@@ -55,7 +50,6 @@ export const execQuery = async (args: DBArg, prisma: any) => {
               }
             }
           }
-
           const rels = getRels({ schema_table, schema, table, tables });
           if (pks.length > 0) {
             if (Object.keys(where.length > 0)) {
@@ -168,7 +162,6 @@ export const execQuery = async (args: DBArg, prisma: any) => {
               }
 
               if (deletes.length > 0) {
-                console.log("deletes", deletes);
                 for (const item of deletes) {
                   const where = {} as any;
                   for (const pk of pks) {
