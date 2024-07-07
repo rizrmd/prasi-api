@@ -24,9 +24,12 @@ export const execQuery = async (args: DBArg, prisma: any) => {
         mode: "field" | "relation";
       };
     };
+    console.log(arg);
     if (arg) {
       const { table, where, data } = arg;
       const mode = arg.mode || "field";
+      console.log("a", table, where, data);
+
       if (table && where && data) {
         const transactions = [];
 
