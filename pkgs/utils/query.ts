@@ -36,8 +36,9 @@ export const execQuery = async (args: DBArg, prisma: any) => {
         const tables = schema
           .findAllByType("model", {})
           .map((e) => e?.name) as string[];
-          
+
         console.log("iud", arg);
+        return { hr: "hello" };
 
         if (schema_table) {
           let pks: Property[] = [];
