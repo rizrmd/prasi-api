@@ -101,6 +101,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                 }
               }
 
+              console.log("iud", inserts, updates, deletes);
               if (inserts.length > 0) {
                 console.log("inserts", inserts);
 
