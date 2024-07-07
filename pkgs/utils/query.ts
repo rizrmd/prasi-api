@@ -24,7 +24,6 @@ export const execQuery = async (args: DBArg, prisma: any) => {
         mode: "field" | "relation";
       };
     };
-    console.log(arg);
     if (arg) {
       const { table, where, data } = arg;
       const mode = arg.mode || "field";
@@ -32,8 +31,14 @@ export const execQuery = async (args: DBArg, prisma: any) => {
         const transactions = [];
 
         const schema_path = dir("app/db/prisma/schema.prisma");
+        console.log("a", schema_path);
+
         const schema = createPrismaSchemaBuilder(await readAsync(schema_path));
+        console.log("b");
+
         const schema_table = schema.findByType("model", { name: table });
+
+        console.log(schema_table);
         const tables = schema
           .findAllByType("model", {})
           .map((e) => e?.name) as string[];
