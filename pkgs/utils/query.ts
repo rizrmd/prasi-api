@@ -36,6 +36,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
         const tables = schema
           .findAllByType("model", {})
           .map((e) => e?.name) as string[];
+        console.log("iud", schema_table);
 
         if (schema_table) {
           let pks: Property[] = [];
@@ -50,6 +51,8 @@ export const execQuery = async (args: DBArg, prisma: any) => {
               }
             }
           }
+          console.log("iud", schema_table, pks);
+
           const rels = getRels({ schema_table, schema, table, tables });
           if (pks.length > 0) {
             if (Object.keys(where.length > 0)) {
