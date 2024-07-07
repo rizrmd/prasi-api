@@ -30,20 +30,14 @@ export const execQuery = async (args: DBArg, prisma: any) => {
     if (body) {
       const { table, where, data } = body;
       const mode = body.mode || "field";
-      console.log("a", table, where, data);
 
       if (table && where && data) {
         const transactions = [];
 
         const schema_path = dir("app/db/prisma/schema.prisma");
-        console.log("a", schema_path);
-
         const schema = createPrismaSchemaBuilder(await readAsync(schema_path));
-        console.log("b");
-
         const schema_table = schema.findByType("model", { name: table });
 
-        console.log(schema_table);
         const tables = schema
           .findAllByType("model", {})
           .map((e) => e?.name) as string[];
@@ -61,7 +55,6 @@ export const execQuery = async (args: DBArg, prisma: any) => {
               }
             }
           }
-          console.log("iud", schema_table, pks);
 
           const rels = getRels({ schema_table, schema, table, tables });
           if (pks.length > 0) {
@@ -114,10 +107,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                 }
               }
 
-              console.log("iud", inserts, updates, deletes);
               if (inserts.length > 0) {
-                console.log("inserts", inserts);
-
                 for (const row of inserts) {
                   for (const [k, v] of Object.entries(row) as any) {
                     const rel = rels[k];
@@ -146,8 +136,6 @@ export const execQuery = async (args: DBArg, prisma: any) => {
               }
 
               if (updates.length > 0) {
-                console.log("updates", updates);
-
                 for (const row of updates) {
                   const where = {} as any;
                   for (const pk of pks) {
