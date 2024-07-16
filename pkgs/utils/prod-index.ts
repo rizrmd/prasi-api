@@ -16,9 +16,6 @@ export const prodIndex = (
     content="width=device-width, initial-scale=1.0, user-scalable=1.0, minimum-scale=1.0, maximum-scale=1.0">
   <link rel="stylesheet" href="/index.css">
   <link rel="stylesheet" href="/main.css">
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&display=swap');
-  </style>
   ${this.head.join("\n")}
 </head>
 
