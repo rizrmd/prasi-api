@@ -36,7 +36,7 @@ const main = {
 console.log("Process Manager running at port:", port);
 
 if (process.env.DATABASE_URL) {
-  if (!(await existsAsync(dir("node_modules/.prisma")))) {
+  if (!(await existsAsync(dir("node_modules/.prisma"))) && process.env.DATABASE_URL) {
     try {
       await Bun.write(
         dir("app/db/.env"),

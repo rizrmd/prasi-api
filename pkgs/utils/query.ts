@@ -1,7 +1,5 @@
 import { Property, createPrismaSchemaBuilder } from "@mrleebo/prisma-ast";
 import { readAsync } from "fs-jetpack";
-//@ts-ignore
-import { Prisma } from "../../app/db/db";
 import { dir } from "./dir";
 import { gunzipAsync } from "./gzip";
 
@@ -319,6 +317,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
 
       if (Array.isArray(json)) {
         const q = json.shift();
+        const Prisma = (await import("../../app/db/db")).Prisma;
         return await tableInstance.bind(prisma)(Prisma.sql(q, ...json));
       }
 

@@ -1,6 +1,11 @@
 import { $ } from "execa";
 import * as fs from "fs";
-import { dirAsync, readAsync, removeAsync, writeAsync } from "fs-jetpack";
+import {
+  dirAsync,
+  readAsync,
+  removeAsync,
+  writeAsync
+} from "fs-jetpack";
 import { apiContext } from "service-srv";
 import { deploy } from "utils/deploy";
 import { dir } from "utils/dir";
@@ -74,6 +79,7 @@ export const _ = {
             DATABASE_URL: action.url,
           });
           await Bun.write(dir(".env"), env);
+          await Bun.write(dir("app/db/.env"), env);
         }
         return "ok";
       case "db-gen":
@@ -88,7 +94,7 @@ export const _ = {
         break;
       case "db-pull":
         {
-          const env = await readAsync(dir("app/db/.env"));
+          let env = await readAsync(dir("app/db/.env"));
           if (env) {
             const ENV = parseEnv(env);
             if (typeof ENV.DATABASE_URL === "string") {
@@ -110,7 +116,7 @@ export const _ = {
                 try {
                   await Bun.write(
                     dir("app/db/.env"),
-                    `DATABASE_URL=${process.env.DATABASE_URL}`
+                    `DATABASE_URL=${ENV.DATABASE_URL}`
                   );
                   await $({ cwd: dir("app/db") })`bun install`;
                   await $({ cwd: dir("app/db") })`bun prisma db pull --force`;
