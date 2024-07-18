@@ -4,7 +4,7 @@ import { dir } from "utils/dir";
 import { g } from "utils/global";
 
 export const _ = {
-  url: "/_kv/**",
+  url: "/_kv",
   raw: true,
   async api() {
     const { req } = apiContext(this);
@@ -14,12 +14,11 @@ export const _ = {
     }
 
     try {
-      const parts = req.params._.split("/");
+      const parts = (await req.json()) as [string, string, any];
       switch (parts[0]) {
         case "set": {
-          const body = await req.json();
-          if (typeof parts[1] === "string" && typeof body !== "undefined") {
-            g.kv.set(parts[1], body);
+          if (typeof parts[1] === "string") {
+            g.kv.set(parts[1], parts[2]);
 
             return new Response(JSON.stringify({ status: "ok" }), {
               headers: { "content-type": "application/json" },
@@ -34,9 +33,22 @@ export const _ = {
           );
         }
         case "get": {
-          return new Response(JSON.stringify(g.kv.get(parts[1])), {
+          if (parts[2]) {
+            g.kv.set(parts[1], parts[2]);
+          }
+
+          return new Response(JSON.stringify(g.kv.get(parts[1]) || null), {
             headers: { "content-type": "application/json" },
           });
+        }
+        case "del": {
+          if (parts[1]) {
+            g.kv.delete(parts[1]);
+
+            return new Response(JSON.stringify({ status: "ok" }), {
+              headers: { "content-type": "application/json" },
+            });
+          }
         }
       }
     } catch (e) {}
