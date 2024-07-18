@@ -1,17 +1,12 @@
-import { $ } from "execa";
 import * as fs from "fs";
-import {
-  dirAsync,
-  readAsync,
-  removeAsync,
-  writeAsync
-} from "fs-jetpack";
+import { dirAsync, readAsync, removeAsync, writeAsync } from "fs-jetpack";
 import { apiContext } from "service-srv";
 import { deploy } from "utils/deploy";
 import { dir } from "utils/dir";
 import { g } from "utils/global";
 import { genEnv, parseEnv } from "utils/parse-env";
 import { restartServer } from "utils/restart";
+import { $ } from "bun";
 
 export const _ = {
   url: "/_deploy",
@@ -84,7 +79,7 @@ export const _ = {
         return "ok";
       case "db-gen":
         {
-          await $({ cwd: dir("app/db") })`bun prisma generate`;
+          await $`bun prisma generate`.cwd(dir("app/db"));
 
           res.send("ok");
           setTimeout(() => {
@@ -118,9 +113,9 @@ export const _ = {
                     dir("app/db/.env"),
                     `DATABASE_URL=${ENV.DATABASE_URL}`
                   );
-                  await $({ cwd: dir("app/db") })`bun install`;
-                  await $({ cwd: dir("app/db") })`bun prisma db pull --force`;
-                  await $({ cwd: dir("app/db") })`bun prisma generate`;
+                  await $`bun install`.cwd(dir("app/db"));
+                  await $`bun prisma db pull --force`.cwd(dir("app/db"));
+                  await $`bun prisma generate`.cwd(dir("app/db"));
                   await Bun.write(
                     dir(`${g.datadir}/db-ver`),
                     Date.now().toString()

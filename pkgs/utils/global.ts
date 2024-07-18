@@ -6,6 +6,7 @@ import { PrismaClient } from "../../app/db/db";
 import admin from "firebase-admin";
 import { Database } from "bun:sqlite";
 import { prodIndex } from "./prod-index";
+import { BunSqliteKeyValue } from "bun-sqlite-key-value";
 
 type SingleRoute = {
   url: string;
@@ -39,6 +40,7 @@ type PrasiServer = {
 
 export const g = global as unknown as {
   db: PrismaClient;
+  kv: BunSqliteKeyValue;
   dburl: string;
   datadir: string;
   mode: "dev" | "prod";
