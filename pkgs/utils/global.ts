@@ -3,10 +3,9 @@ import { Logger } from "pino";
 import { RadixRouter } from "radix3";
 import { PrismaClient } from "../../app/db/db";
 
-import admin from "firebase-admin";
 import { Database } from "bun:sqlite";
-import { prodIndex } from "./prod-index";
-import { BunSqliteKeyValue } from "bun-sqlite-key-value";
+import admin from "firebase-admin";
+import { BunSqliteKeyValue } from "./kv";
 
 type SingleRoute = {
   url: string;
