@@ -254,6 +254,18 @@ export const execQuery = async (args: DBArg, prisma: any) => {
           return getRels({ schema_table, schema, table, tables });
         } else if (action === "schema_columns") {
           for (const col of schema_table.properties) {
+            if (
+              col.type === "attribute" &&
+              col.name === "id" &&
+              col.args[0].type === "attributeArgument" &&
+              col.args[0].value
+            ) {
+              for (const colname of (col.args[0].value as any).args) {
+                if (columns[colname]) {
+                  columns[colname].is_pk = true;
+                }
+              }
+            }
             if (col.type === "field" && !col.array) {
               if (col.attributes && col.attributes?.length > 0) {
                 const attr = col.attributes.find(
