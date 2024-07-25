@@ -1,8 +1,9 @@
 import { Property, createPrismaSchemaBuilder } from "@mrleebo/prisma-ast";
 import { readAsync } from "fs-jetpack";
+import { HasManyType, HasOneType } from "./db/types";
 import { dir } from "./dir";
 import { gunzipAsync } from "./gzip";
-
+import { upsertRelMany } from "./db/upsert-rel-many";
 export type DBArg = {
   db: string;
   table: string;
@@ -63,6 +64,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
               const updates = [] as any[];
               const inserts = [] as any[];
               const deletes = [] as any[];
+              const delete_has_many = [] as { table: string; where: any }[];
               const exists_idx = new Set<number>();
 
               const marker = {} as any;
@@ -110,6 +112,8 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                           let newv = { connect: { [to]: v[to] } };
                           row[k] = newv;
                         }
+                      } else if (rel.type === "has-many") {
+                        upsertRelMany({ schema, k, rel, row });
                       }
                     }
                   }
@@ -144,6 +148,8 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                           let newv = { connect: { [to]: v[to] } };
                           row[k] = newv;
                         }
+                      } else if (rel.type === "has-many") {
+                        upsertRelMany({ schema, k, rel, row });
                       }
                     }
                   }
@@ -402,19 +408,7 @@ const getRels = ({
   table: any;
   tables: string[];
 }) => {
-  const rels = {} as Record<
-    string,
-    | {
-        type: "has-many";
-        to: { table: string; fields: string[] };
-        from: { table: string; fields: string[] };
-      }
-    | {
-        type: "has-one";
-        to: { table: string; fields: string[] };
-        from: { table: string; fields: string[] };
-      }
-  >;
+  const rels = {} as Record<string, HasManyType | HasOneType>;
   for (const col of schema_table.properties) {
     if (
       col.type === "field" &&
