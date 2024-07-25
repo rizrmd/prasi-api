@@ -3,7 +3,7 @@ import { readAsync } from "fs-jetpack";
 import { HasManyType, HasOneType } from "./db/types";
 import { dir } from "./dir";
 import { gunzipAsync } from "./gzip";
-import { upsertRelMany } from "./db/upsert-rel-many";
+import { createRelMany } from "./db/create-rel-many";
 export type DBArg = {
   db: string;
   table: string;
@@ -52,10 +52,109 @@ export const execQuery = async (args: DBArg, prisma: any) => {
           const rels = getRels({ schema_table, schema, table, tables });
           if (pks.length > 0) {
             if (Object.keys(where.length > 0)) {
+              const rel_many = {} as Record<
+                string,
+                {
+                  to: string;
+                  from: string;
+                  pk: string[];
+                  select: Set<string>;
+                  ops: Map<
+                    any,
+                    {
+                      delete: Set<any>;
+                      insert: Set<any>;
+                      tobe: any[];
+                    }
+                  >;
+                }
+              >;
+
+              for (const row of data) {
+                for (const [k, v] of Object.entries(row) as any) {
+                  const rel = rels[k];
+                  if (rel) {
+                    if (rel.type === "has-one") {
+                      const to = rel.to.fields[0];
+                      if (!v.connect && v[to]) {
+                        let newv = { connect: { [to]: v[to] } };
+                        row[k] = newv;
+                      }
+                    } else if (rel.type === "has-many") {
+                      if (!rel_many[k]) {
+                        const schema_table = schema.findByType("model", {
+                          name: rel.to.table,
+                        });
+
+                        let pks: Property[] = [];
+                        if (schema_table) {
+                          for (const col of schema_table.properties) {
+                            if (col.type === "field" && !col.array) {
+                              if (
+                                col.attributes &&
+                                col.attributes?.length > 0
+                              ) {
+                                const is_pk = col.attributes.find(
+                                  (e) => e.name === "id"
+                                );
+                                if (is_pk) {
+                                  pks.push(col);
+                                  break;
+                                }
+                              }
+                            }
+                          }
+                        }
+
+                        rel_many[k] = {
+                          to: rel.to.table,
+                          select: new Set(),
+                          from: rel.from.table,
+                          pk: pks.map((e) => e.name),
+                          ops: new Map(),
+                        };
+                      }
+
+                      const tobe = createRelMany({
+                        row,
+                        k,
+                        schema,
+                        rel,
+                      });
+
+                      if (tobe) {
+                        for (const row of tobe) {
+                          for (const key of Object.keys(row)) {
+                            rel_many[k].select.add(key);
+                          }
+                        }
+                      }
+
+                      rel_many[k].ops.set(row, {
+                        delete: new Set(),
+                        insert: new Set(),
+                        tobe: tobe || [],
+                      });
+                    }
+                  }
+                }
+              }
+
               const select = {} as any;
               for (const pk of pks) {
                 select[pk.name] = true;
               }
+
+              if (Object.keys(rel_many).length > 0) {
+                for (const [k, v] of Object.entries(rel_many)) {
+                  select[k] = { select: {} };
+                  Object.values(v.pk).map((e) => (select[k].select[e] = true));
+                  for (const e of v.select) {
+                    select[k].select[e] = true;
+                  }
+                }
+              }
+
               const existing: any[] = await prisma[table].findMany({
                 where,
                 select,
@@ -68,7 +167,6 @@ export const execQuery = async (args: DBArg, prisma: any) => {
               const exists_idx = new Set<number>();
 
               const marker = {} as any;
-
               for (const row of data) {
                 const found = existing.find((item, idx) => {
                   for (const pk of pks) {
@@ -78,6 +176,55 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   return true;
                 });
 
+                for (const [k, v] of Object.entries(row) as any) {
+                  const rel = rels[k];
+                  if (rel) {
+                    if (rel.type === "has-many" && rel_many[k]) {
+                      delete row[k];
+                      const current = rel_many[k].ops.get(row);
+                      if (current && found && found[k] && current.tobe) {
+                        let cur_matches = new Set<any>();
+                        for (const tobe of current.tobe) {
+                          let tobe_found = false;
+                          for (const cur of found[k]) {
+                            let matched_all = true;
+                            for (const [k, v] of Object.entries(tobe)) {
+                              if (cur[k] !== v) {
+                                matched_all = false;
+                                break;
+                              }
+                            }
+                            if (matched_all) {
+                              cur_matches.add(cur);
+                              tobe_found = true;
+                              break;
+                            }
+                          }
+                          if (!tobe_found) {
+                            current.insert.add(tobe);
+                          }
+                        }
+
+                        for (const cur of found[k]) {
+                          if (!cur_matches.has(cur)) {
+                            current.delete.add(cur);
+                          }
+                        }
+
+                        row[k] = { createMany: { data: [...current.insert] } };
+
+                        if (current.delete.size > 0) {
+                          for (const d of current.delete) {
+                            transactions.push(
+                              prisma[rel_many[k].to].delete({ where: d })
+                            );
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+
                 if (mode === "field") {
                   if (found) {
                     updates.push({ ...row, ...where });
@@ -86,9 +233,9 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   }
                 } else {
                   if (found) {
-                    updates.push({ ...row });
+                    updates.push(row);
                   } else {
-                    inserts.push({ ...row });
+                    inserts.push(row);
                   }
                 }
               }
@@ -103,21 +250,6 @@ export const execQuery = async (args: DBArg, prisma: any) => {
 
               if (inserts.length > 0) {
                 for (const row of inserts) {
-                  for (const [k, v] of Object.entries(row) as any) {
-                    const rel = rels[k];
-                    if (rel) {
-                      if (rel.type === "has-one") {
-                        const to = rel.to.fields[0];
-                        if (!v.connect && v[to]) {
-                          let newv = { connect: { [to]: v[to] } };
-                          row[k] = newv;
-                        }
-                      } else if (rel.type === "has-many") {
-                        upsertRelMany({ schema, k, rel, row });
-                      }
-                    }
-                  }
-
                   if (typeof row._marker !== "undefined") {
                     marker[transactions.length] = row._marker;
                     delete row._marker;
@@ -137,21 +269,6 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   for (const pk of pks) {
                     where[pk.name] = row[pk.name];
                     delete row[pk.name];
-                  }
-
-                  for (const [k, v] of Object.entries(row) as any) {
-                    const rel = rels[k];
-                    if (rel) {
-                      if (rel.type === "has-one") {
-                        const to = rel.to.fields[0];
-                        if (!v.connect && v[to]) {
-                          let newv = { connect: { [to]: v[to] } };
-                          row[k] = newv;
-                        }
-                      } else if (rel.type === "has-many") {
-                        upsertRelMany({ schema, k, rel, row });
-                      }
-                    }
                   }
 
                   if (typeof row._marker !== "undefined") {

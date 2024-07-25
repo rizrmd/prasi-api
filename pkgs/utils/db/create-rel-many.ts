@@ -2,7 +2,7 @@ import { createPrismaSchemaBuilder, Field } from "@mrleebo/prisma-ast";
 import { get } from "utils/get";
 import { HasManyType } from "./types";
 
-export const upsertRelMany = (arg: {
+export const createRelMany = (arg: {
   row: any;
   k: string;
   schema: ReturnType<typeof createPrismaSchemaBuilder>;
@@ -57,6 +57,6 @@ export const upsertRelMany = (arg: {
       }
       return item;
     });
-    row[k] = { createMany: { data: create_many } };
+    return create_many
   }
 };
