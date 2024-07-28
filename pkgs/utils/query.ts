@@ -38,6 +38,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
 
         if (schema_table) {
           let pks: Property[] = [];
+          let pk_composite_rel = "";
           for (const col of schema_table.properties) {
             if (col.type === "field" && !col.array) {
               if (col.attributes && col.attributes?.length > 0) {
@@ -48,9 +49,26 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                 }
               }
             }
+            if (
+              col.type === "attribute" &&
+              col.name === "id" &&
+              col.kind === "object"
+            ) {
+              const value = col.args[0].value as any;
+              if (Array.isArray(value.args) && value.args.length > 0) {
+                pks = value.args.map((e: string) => ({
+                  name: e,
+                }));
+              }
+            }
           }
+
           const rels = getRels({ schema_table, schema, table, tables });
           if (pks.length > 0) {
+            if (pks.length > 1) {
+              pk_composite_rel = pks.map((e) => e.name).join("_");
+            }
+
             if (Object.keys(where.length > 0)) {
               const rel_many = {} as Record<
                 string,
@@ -276,6 +294,15 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                     delete row._marker;
                   }
 
+                  if (pk_composite_rel) {
+                    const comp_rel_val = {} as any;
+                    for (const pk of pks) {
+                      comp_rel_val[pk.name] = where[pk.name];
+                      delete where[pk.name];
+                    }
+                    where[pk_composite_rel] = comp_rel_val;
+                  }
+
                   transactions.push(
                     prisma[table].update({ data: row, where, select })
                   );
@@ -288,6 +315,16 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   for (const pk of pks) {
                     where[pk.name] = item[pk.name];
                   }
+
+                  if (pk_composite_rel) {
+                    const comp_rel_val = {} as any;
+                    for (const pk of pks) {
+                      comp_rel_val[pk.name] = where[pk.name];
+                      delete where[pk.name];
+                    }
+                    where[pk_composite_rel] = comp_rel_val;
+                  }
+
                   transactions.push(prisma[table].delete({ where }));
                 }
               }
