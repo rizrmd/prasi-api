@@ -1,4 +1,4 @@
-import { Server, WebSocketHandler } from "bun";
+import { Server, Subprocess, WebSocketHandler } from "bun";
 import { Logger } from "pino";
 import { RadixRouter } from "radix3";
 import { PrismaClient } from "../../app/db/db";
@@ -47,6 +47,12 @@ export const g = global as unknown as {
   log: Logger;
   firebaseInit: boolean;
   firebase: admin.app.App;
+  main: {
+    process: null | Subprocess;
+    restart: {
+      timeout: any;
+    };
+  };
   notif: {
     db: Database;
   };

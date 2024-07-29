@@ -4,7 +4,15 @@ import exitHook from "exit-hook";
 import { existsAsync } from "fs-jetpack";
 import { dir } from "utils/dir";
 import { checkPort, randomBetween } from "utils/ensure";
+import { g } from "utils/global";
 
+g.main = {
+  process: null as null | Subprocess,
+  restart: {
+    timeout: null as any,
+  },
+};
+const main = g.main;
 let port = 0;
 
 try {
@@ -26,17 +34,13 @@ exitHook((signal) => {
   console.log(`Exiting with signal: ${signal}`);
 });
 
-const main = {
-  process: null as null | Subprocess,
-  restart: {
-    timeout: null as any,
-  },
-};
-
 console.log("Process Manager running at port:", port);
 
 if (process.env.DATABASE_URL) {
-  if (!(await existsAsync(dir("node_modules/.prisma"))) && process.env.DATABASE_URL) {
+  if (
+    !(await existsAsync(dir("node_modules/.prisma"))) &&
+    process.env.DATABASE_URL
+  ) {
     try {
       await Bun.write(
         dir("app/db/.env"),

@@ -163,6 +163,14 @@ export const _ = {
           await deploy.init();
           const deploys = fs.readdirSync(dir(`/app/web/deploy`));
 
+          if (g.main.process) {
+            setTimeout(() => {
+              if (g.main.process) {
+                g.main.process.kill();
+              }
+            }, 500);
+          }
+
           return {
             now: Date.now(),
             current: parseInt(deploy.config.deploy.ts),
