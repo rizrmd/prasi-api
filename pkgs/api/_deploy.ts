@@ -163,11 +163,9 @@ export const _ = {
           await deploy.init();
           const deploys = fs.readdirSync(dir(`/app/web/deploy`));
 
-          if (g.main.process) {
+          if (g.mode === "prod") {
             setTimeout(() => {
-              if (g.main.process) {
-                g.main.process.kill();
-              }
+              process.exit();
             }, 500);
           }
 
