@@ -1,6 +1,8 @@
 import { simpleHash } from "utils/cache";
 import { g } from "utils/global";
 import { loadCachedBr } from "utils/br-load";
+import { binaryExtensions } from "./binary-ext";
+import mime from "mime";
 
 const parseQueryParams = (ctx: any) => {
   const pageHref = ctx.req.url;
@@ -60,7 +62,13 @@ export const createResponse = (
   const status =
     typeof opt?.res?._status === "number" ? opt?.res?._status : undefined;
 
-  let content: any = typeof body === "string" ? body : JSON.stringify(body);
+  const content_type = opt?.headers?.["content-type"];
+  const is_binary = binaryExtensions.includes(
+    mime.getExtension(content_type) || ""
+  );
+  let content: any =
+    typeof body === "string" || is_binary ? body : JSON.stringify(body);
+
   const headers = { ...(opt?.headers || {}) } as Record<string, string>;
 
   if (opt?.cache_accept) {
@@ -70,10 +78,6 @@ export const createResponse = (
       opt.cache_accept.toLowerCase().includes("br")
     ) {
       const content_hash = simpleHash(content);
-
-      if (!g.cache.br[content_hash]) {
-        loadCachedBr(content_hash, content);
-      }
 
       if (g.cache.br[content_hash]) {
         cached = true;
@@ -85,11 +89,9 @@ export const createResponse = (
     if (opt?.high_compression) {
       if (!cached && opt.cache_accept.toLowerCase().includes("gz")) {
         const content_hash = simpleHash(content);
-
         if (!g.cache.gz[content_hash]) {
           g.cache.gz[content_hash] = Bun.gzipSync(content);
         }
-
         if (g.cache.gz[content_hash]) {
           cached = true;
           content = g.cache.gz[content_hash];
@@ -110,6 +112,12 @@ export const createResponse = (
         }
       : undefined
   );
+
+  if (opt?.headers?.["content-type"]?.includes("woff")) {
+    new Response(body, {
+      headers: { "content-type": headers["content-type"] },
+    });
+  }
 
   for (const [k, v] of Object.entries(headers)) {
     res.headers.append(k, v);

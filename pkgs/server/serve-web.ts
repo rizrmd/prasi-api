@@ -7,9 +7,10 @@ export const serveWeb = async (arg: {
   cache_accept: string;
 }) => {
   const type = mime.getType(arg.pathname);
+
   return createResponse(arg.content, {
     cache_accept: arg.cache_accept,
-    high_compression: true,
+    high_compression: false,
     headers: !type ? undefined : { "content-type": type },
   });
 };

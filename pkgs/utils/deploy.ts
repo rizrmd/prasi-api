@@ -12,6 +12,7 @@ import { gunzipAsync } from "./gzip";
 import { createRouter } from "radix3";
 import { prodIndex } from "./prod-index";
 import { startBrCompress } from "./br-load";
+import { decode } from "msgpackr";
 
 const decoder = new TextDecoder();
 export const deploy = {
@@ -28,15 +29,25 @@ export const deploy = {
     console.log(`Loading site: ${this.config.site_id} ${ts}`);
 
     try {
-      g.deploy.content = JSON.parse(
-        decoder.decode(
+      if (await Bun.file(`app/web/deploy/${ts}.mpack`).exists()) {
+        g.deploy.content = decode(
           await gunzipAsync(
             new Uint8Array(
               await Bun.file(dir(`app/web/deploy/${ts}.gz`)).arrayBuffer()
             )
           )
-        )
-      );
+        );
+      } else {
+        g.deploy.content = JSON.parse(
+          decoder.decode(
+            await gunzipAsync(
+              new Uint8Array(
+                await Bun.file(dir(`app/web/deploy/${ts}.gz`)).arrayBuffer()
+              )
+            )
+          )
+        );
+      }
 
       if (g.deploy.content) {
         g.cache = {
@@ -116,6 +127,7 @@ export const deploy = {
       }
     } catch (e) {
       console.log("Failed to load site", this.config.site_id);
+      console.error(e);
     }
   },
   async run() {
@@ -133,12 +145,13 @@ export const deploy = {
       `Downloading site deploy: ${this.config.site_id} [ts: ${this.config.deploy.ts}]`
     );
     const res = await fetch(
-      `${base_url}/prod-zip/${this.config.site_id}?ts=${Date.now()}`
+      `${base_url}/prod-zip/${this.config.site_id}?ts=${Date.now()}&msgpack=1`
     );
     const ts = Date.now();
 
     const file = Bun.file(dir(`app/web/deploy/${ts}.gz`));
     await Bun.write(file, await res.arrayBuffer());
+    await Bun.write(dir(`app/web/deploy/${ts}.mpack`), "ok");
     this.config.deploy.ts = ts + "";
 
     await this.saveConfig();

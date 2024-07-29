@@ -23,13 +23,13 @@ export const _ = {
       },
       compress: async () => {
         const last = parts.pop();
-        if (last === 'all') {
+        if (last === "all") {
           g.compress.mode = "all";
         }
-        if (last === 'only-gz') {
+        if (last === "only-gz") {
           g.compress.mode = "only-gz";
         }
-        if (last === 'off') {
+        if (last === "off") {
           g.compress.mode = "off";
         }
       },
@@ -73,7 +73,7 @@ export const _ = {
       page: async () => {
         const page = g.deploy.pages[parts[1]];
         if (page) {
-          return createResponse(
+          const res = createResponse(
             JSON.stringify({
               id: page.id,
               root: page.content_tree,
@@ -84,6 +84,7 @@ export const _ = {
               high_compression: true,
             }
           );
+          return res;
         }
       },
       pages: async () => {
