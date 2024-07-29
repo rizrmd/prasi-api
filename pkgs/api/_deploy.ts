@@ -41,7 +41,9 @@ export const _ = {
         return {
           now: Date.now(),
           current: parseInt(g.deploy.config.deploy.ts),
-          deploys: deploys.map((e) => parseInt(e.replace(".gz", ""))),
+          deploys: deploys
+            .filter((e) => e.endsWith(".gz"))
+            .map((e) => parseInt(e.replace(".gz", ""))),
           db: {
             url: g.dburl || "-",
           },
@@ -148,7 +150,9 @@ export const _ = {
           return {
             now: Date.now(),
             current: parseInt(deploy.config.deploy.ts),
-            deploys: deploys.map((e) => parseInt(e.replace(".gz", ""))),
+            deploys: deploys
+              .filter((e) => e.endsWith(".gz"))
+              .map((e) => parseInt(e.replace(".gz", ""))),
           };
         }
         break;
