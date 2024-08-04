@@ -127,7 +127,8 @@ export const deploy = {
       }
     } catch (e) {
       console.log("Failed to load site", this.config.site_id);
-      console.error(e);
+      if (e instanceof Error)
+        console.error(e.message, `[app/web/deploy/${ts}.gz]`);
     }
   },
   async run() {
