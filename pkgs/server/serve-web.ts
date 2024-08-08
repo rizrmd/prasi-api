@@ -10,7 +10,7 @@ export const serveWeb = async (arg: {
 
   return createResponse(arg.content, {
     cache_accept: arg.cache_accept,
-    high_compression: false,
+    high_compression: true,
     headers: !type ? undefined : { "content-type": type },
   });
 };

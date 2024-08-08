@@ -143,7 +143,7 @@ export const deploy = {
     }
 
     console.log(
-      `Downloading site deploy: ${this.config.site_id} [ts: ${this.config.deploy.ts}]`
+      `Downloading site deploy: ${this.config.site_id} [ts: ${this.config.deploy.ts}] ${base_url}`
     );
     const res = await fetch(
       `${base_url}/prod-zip/${this.config.site_id}?ts=${Date.now()}&msgpack=1`

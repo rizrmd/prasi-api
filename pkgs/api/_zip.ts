@@ -1,6 +1,6 @@
 import { $ } from "bun";
 import Database from "bun:sqlite";
-import { copyAsync, removeAsync } from "fs-jetpack";
+import { copyAsync } from "fs-jetpack";
 import mime from "mime";
 import { deploy } from "utils/deploy";
 import { dir } from "utils/dir";
@@ -50,6 +50,7 @@ export const _ = {
       content: g.deploy.content?.site?.config?.api_url || "",
     });
     const gz = g.deploy.content;
+
     if (gz) {
       let layout = null as null | SinglePage;
       for (const l of gz.layouts) {
@@ -80,7 +81,7 @@ export const _ = {
       add({
         path: "load-js",
         type: "",
-        content: await getContent("load.js.prod", api_url),
+        content: await getContent("load.js.prod", `"${api_url}"`),
       });
     }
 

@@ -73,6 +73,7 @@ export const createResponse = (
 
   if (opt?.cache_accept) {
     let cached = false;
+
     if (
       opt?.high_compression &&
       opt.cache_accept.toLowerCase().includes("br")
