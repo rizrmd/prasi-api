@@ -1,7 +1,22 @@
+import { g } from "./global";
+
+const preload: string[] = [];
+
 export const prodIndex = (
   site_id: string,
   prasi: { page_id?: string; params?: any }
 ) => {
+  if (preload.length === 0) {
+    Object.keys(g.deploy.content?.code.core || {})
+      .filter((e) => e.endsWith(".woff") || e.endsWith(".woff2"))
+      .forEach((e) => {
+        const ext = e.split(".").pop();
+        preload.push(
+          `  <link rel="preload" href="/${e}" as="font" crossorigin="anonymous">`
+        );
+      });
+  }
+
   return {
     head: [] as string[],
     body: [] as string[],
@@ -15,8 +30,9 @@ export const prodIndex = (
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, user-scalable=1.0, minimum-scale=1.0, maximum-scale=1.0">
   <link rel="stylesheet" href="/index.css">
-  <link rel="stylesheet" crossorigin href="/main.css">
-  ${this.head.join("\n")}
+  <link rel="stylesheet" href="/main.css">
+${this.head.join("\n")}
+${preload.join("\n")}
 </head>
 
 <body class="flex-col flex-1 w-full min-h-screen flex opacity-0">
