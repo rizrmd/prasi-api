@@ -10,7 +10,6 @@ export const prodIndex = (
     Object.keys(g.deploy.content?.code.core || {})
       .filter((e) => e.endsWith(".woff") || e.endsWith(".woff2"))
       .forEach((e) => {
-        const ext = e.split(".").pop();
         preload.push(
           `  <link rel="preload" href="/${e}" as="font" crossorigin="anonymous">`
         );
