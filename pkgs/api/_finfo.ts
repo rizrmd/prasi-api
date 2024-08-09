@@ -20,7 +20,7 @@ export const _ = {
     const file = Bun.file(path);
 
     if (await file.exists()) {
-      const arr = path.split("-");
+      const arr = (path.split("/").pop() || "").split("-");
       const ext = arr.pop();
       const fname = arr.join("-") + "." + ext;
       const ctype = mime.getType(fname);
