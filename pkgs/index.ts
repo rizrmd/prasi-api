@@ -51,7 +51,11 @@ await createLogger();
 await ensureNotRunning();
 
 if (g.db) {
-  await g.db.$connect();
+  try {
+    await g.db.$connect();
+  } catch (e) {
+    console.error(e);
+  }
 }
 
 await config.init();
