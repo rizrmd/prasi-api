@@ -21,9 +21,9 @@ export const _ = {
 
     if (await file.exists()) {
       const arr = (path.split("/").pop() || "").split("-");
-      const ext = arr.pop();
+      const ctype = mime.getType(path);
+      const ext = mime.getExtension(ctype || "");
       const fname = arr.join("-") + "." + ext;
-      const ctype = mime.getType(fname);
 
       res = new Response(
         JSON.stringify({
