@@ -1,9 +1,9 @@
 import { Property, createPrismaSchemaBuilder } from "@mrleebo/prisma-ast";
 import { readAsync } from "fs-jetpack";
+import { createRelMany } from "./db/create-rel-many";
 import { HasManyType, HasOneType } from "./db/types";
 import { dir } from "./dir";
 import { gunzipAsync } from "./gzip";
-import { createRelMany } from "./db/create-rel-many";
 export type DBArg = {
   db: string;
   table: string;
@@ -113,7 +113,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                                 col.attributes?.length > 0
                               ) {
                                 const is_pk = col.attributes.find(
-                                  (e) => e.name === "id"
+                                  (e) => e.name === "id",
                                 );
                                 if (is_pk) {
                                   pks.push(col);
@@ -234,7 +234,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                         if (current.delete.size > 0) {
                           for (const d of current.delete) {
                             transactions.push(
-                              prisma[rel_many[k].to].delete({ where: d })
+                              prisma[rel_many[k].to].delete({ where: d }),
                             );
                           }
                         }
@@ -276,7 +276,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   transactions.push(
                     prisma[table].create({
                       data: row,
-                    })
+                    }),
                   );
                 }
               }
@@ -304,7 +304,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   }
 
                   transactions.push(
-                    prisma[table].update({ data: row, where, select })
+                    prisma[table].update({ data: row, where, select }),
                   );
                 }
               }
@@ -365,7 +365,10 @@ export const execQuery = async (args: DBArg, prisma: any) => {
             const tableInstance = prisma[item.table];
             if (tableInstance) {
               promises.push(
-                tableInstance.updateMany({ where: item.where, data: item.data })
+                tableInstance.updateMany({
+                  where: item.where,
+                  data: item.data,
+                }),
               );
             }
           }
@@ -380,16 +383,19 @@ export const execQuery = async (args: DBArg, prisma: any) => {
   }
   if (action.startsWith("schema_")) {
     const schema_path = dir("app/db/prisma/schema.prisma");
+
     const schema = createPrismaSchemaBuilder(await readAsync(schema_path));
+
     if (action === "schema_tables") {
       const tables = schema.findAllByType("model", {}).map((e) => e?.name);
       const view = schema.findAllByType("view", {}).map((e) => e?.name);
       return [...tables, ...view];
     } else {
-      let schema_table = schema.findByType("model", { name: table });
+      let schema_table = schema.findAllByType("model", { name: table })?.[0];
+
       let is_view = false;
       if (!schema_table) {
-        const view = schema.findByType("view", { name: table });
+        const view = schema.findAllByType("view", { name: table })?.[0];
         if (view) {
           is_view = true;
           schema_table = view as any;
@@ -429,11 +435,11 @@ export const execQuery = async (args: DBArg, prisma: any) => {
             if (col.type === "field" && !col.array) {
               if (col.attributes && col.attributes?.length > 0) {
                 const attr = col.attributes.find(
-                  (e) => e.name !== "id" && e.name !== "default"
+                  (e) => e.name !== "id" && e.name !== "default",
                 );
 
                 const default_val = col.attributes.find(
-                  (e) => e.name === "default"
+                  (e) => e.name === "default",
                 );
                 let is_pk = col.attributes.find((e) => e.name === "id");
 
@@ -505,7 +511,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
 
         if (params[0] && params[0].where) {
           const filtered = Object.values(params[0].where).filter(
-            (e) => e
+            (e) => e,
           ).length;
           if (filtered === 0)
             throw new Error("deleteMany without condition is forbidden");
@@ -584,7 +590,7 @@ const getRels = ({
             });
             if (field && field.type === "field") {
               const rel = field.attributes?.find(
-                (e: any) => e.kind === "field"
+                (e: any) => e.kind === "field",
               );
 
               if (rel && rel.args) {
@@ -603,7 +609,7 @@ const getRels = ({
         }
       } else if (col.attributes) {
         const rel = col.attributes.find(
-          (e: any) => e.type === "attribute" && e.name === "relation"
+          (e: any) => e.type === "attribute" && e.name === "relation",
         );
         if (rel && typeof col.fieldType === "string") {
           const target = schema.findByType("model", {
@@ -629,7 +635,7 @@ const getRels = ({
         });
         if (target) {
           const to = target.properties.find(
-            (e) => e.type === "field" && e.fieldType === table
+            (e) => e.type === "field" && e.fieldType === table,
           );
           if (to && to.type === "field" && (to.attributes?.length || 0) > 0) {
             const rel = to.attributes?.find((e) => e.name === "relation");
