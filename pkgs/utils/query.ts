@@ -21,7 +21,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
         table: string;
         where: any;
         data: any[];
-        mode: "field" | "relation";
+        mode: "field" | "raw";
       };
     };
     if (arg) {
@@ -88,72 +88,74 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   >;
                 }
               >;
+              
+              if (mode !== "raw") {
+                for (const row of data) {
+                  for (const [k, v] of Object.entries(row) as any) {
+                    const rel = rels[k];
+                    if (rel) {
+                      if (rel.type === "has-one") {
+                        const to = rel.to.fields[0];
+                        if (!v.connect && v[to]) {
+                          let newv = { connect: { [to]: v[to] } };
+                          row[k] = newv;
+                        }
+                      } else if (rel.type === "has-many") {
+                        if (!rel_many[k]) {
+                          const schema_table = schema.findByType("model", {
+                            name: rel.to.table,
+                          });
 
-              for (const row of data) {
-                for (const [k, v] of Object.entries(row) as any) {
-                  const rel = rels[k];
-                  if (rel) {
-                    if (rel.type === "has-one") {
-                      const to = rel.to.fields[0];
-                      if (!v.connect && v[to]) {
-                        let newv = { connect: { [to]: v[to] } };
-                        row[k] = newv;
-                      }
-                    } else if (rel.type === "has-many") {
-                      if (!rel_many[k]) {
-                        const schema_table = schema.findByType("model", {
-                          name: rel.to.table,
-                        });
-
-                        let pks: Property[] = [];
-                        if (schema_table) {
-                          for (const col of schema_table.properties) {
-                            if (col.type === "field" && !col.array) {
-                              if (
-                                col.attributes &&
-                                col.attributes?.length > 0
-                              ) {
-                                const is_pk = col.attributes.find(
-                                  (e) => e.name === "id"
-                                );
-                                if (is_pk) {
-                                  pks.push(col);
-                                  break;
+                          let pks: Property[] = [];
+                          if (schema_table) {
+                            for (const col of schema_table.properties) {
+                              if (col.type === "field" && !col.array) {
+                                if (
+                                  col.attributes &&
+                                  col.attributes?.length > 0
+                                ) {
+                                  const is_pk = col.attributes.find(
+                                    (e) => e.name === "id"
+                                  );
+                                  if (is_pk) {
+                                    pks.push(col);
+                                    break;
+                                  }
                                 }
                               }
                             }
                           }
+
+                          rel_many[k] = {
+                            to: rel.to.table,
+                            select: new Set(),
+                            from: rel.from.table,
+                            pk: pks.map((e) => e.name),
+                            ops: new Map(),
+                          };
                         }
 
-                        rel_many[k] = {
-                          to: rel.to.table,
-                          select: new Set(),
-                          from: rel.from.table,
-                          pk: pks.map((e) => e.name),
-                          ops: new Map(),
-                        };
-                      }
+                        const tobe = createRelMany({
+                          row,
+                          k,
+                          schema,
+                          rel,
+                        });
 
-                      const tobe = createRelMany({
-                        row,
-                        k,
-                        schema,
-                        rel,
-                      });
-
-                      if (tobe) {
-                        for (const row of tobe) {
-                          for (const key of Object.keys(row)) {
-                            rel_many[k].select.add(key);
+                        if (tobe) {
+                          for (const row of tobe) {
+                            for (const key of Object.keys(row)) {
+                              rel_many[k].select.add(key);
+                            }
                           }
                         }
-                      }
 
-                      rel_many[k].ops.set(row, {
-                        delete: new Set(),
-                        insert: new Set(),
-                        tobe: tobe || [],
-                      });
+                        rel_many[k].ops.set(row, {
+                          delete: new Set(),
+                          insert: new Set(),
+                          tobe: tobe || [],
+                        });
+                      }
                     }
                   }
                 }
@@ -194,7 +196,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   return true;
                 });
 
-                if (mode === "field") {
+                if (mode !== "raw") {
                   for (const [k, v] of Object.entries(row) as any) {
                     const rel = rels[k];
                     if (rel) {
@@ -247,7 +249,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   }
                 }
 
-                if (mode === "field") {
+                if (mode !== "raw") {
                   if (found) {
                     updates.push({ ...row, ...where });
                   } else {
