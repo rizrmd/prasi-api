@@ -29,6 +29,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
       const mode = arg.mode || "field";
       if (table && where && data) {
         const transactions = [];
+        const tx_delete_index = new Set<number>();
 
         const schema_path = dir("app/db/prisma/schema.prisma");
         const schema = createPrismaSchemaBuilder(await readAsync(schema_path));
@@ -88,7 +89,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   >;
                 }
               >;
-              
+
               if (mode !== "raw") {
                 for (const row of data) {
                   for (const [k, v] of Object.entries(row) as any) {
@@ -332,16 +333,26 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   }
 
                   transactions.push(prisma[table].delete({ where }));
+                  tx_delete_index.add(transactions.length - 1);
                 }
               }
 
-              const result = await prisma.$transaction(transactions);
+              const raw_result = await prisma.$transaction(transactions);
+              const result: any = [];
 
               if (Object.keys(marker).length > 0) {
                 for (const [k, v] of Object.entries(marker)) {
-                  result[k]._marker = v;
+                  raw_result[k]._marker = v;
                 }
               }
+
+              for (const [k, v] of Object.entries(raw_result)) {
+                if (tx_delete_index.has(parseInt(k))) {
+                  continue;
+                }
+                result.push(v);
+              }
+
               return result;
             }
           }
