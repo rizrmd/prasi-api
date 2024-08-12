@@ -4,6 +4,7 @@ import { createRelMany } from "./db/create-rel-many";
 import { HasManyType, HasOneType } from "./db/types";
 import { dir } from "./dir";
 import { gunzipAsync } from "./gzip";
+
 export type DBArg = {
   db: string;
   table: string;
@@ -113,7 +114,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                                 col.attributes?.length > 0
                               ) {
                                 const is_pk = col.attributes.find(
-                                  (e) => e.name === "id",
+                                  (e) => e.name === "id"
                                 );
                                 if (is_pk) {
                                   pks.push(col);
@@ -181,7 +182,6 @@ export const execQuery = async (args: DBArg, prisma: any) => {
               const updates = [] as any[];
               const inserts = [] as any[];
               const deletes = [] as any[];
-              const delete_has_many = [] as { table: string; where: any }[];
               const exists_idx = new Set<number>();
 
               const marker = {} as any;
@@ -194,48 +194,52 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   return true;
                 });
 
-                for (const [k, v] of Object.entries(row) as any) {
-                  const rel = rels[k];
-                  if (rel) {
-                    if (rel.type === "has-many" && rel_many[k]) {
-                      delete row[k];
-                      const current = rel_many[k].ops.get(row);
-                      if (current && found && found[k] && current.tobe) {
-                        let cur_matches = new Set<any>();
-                        for (const tobe of current.tobe) {
-                          let tobe_found = false;
-                          for (const cur of found[k]) {
-                            let matched_all = true;
-                            for (const [k, v] of Object.entries(tobe)) {
-                              if (cur[k] !== v) {
-                                matched_all = false;
+                if (mode === "field") {
+                  for (const [k, v] of Object.entries(row) as any) {
+                    const rel = rels[k];
+                    if (rel) {
+                      if (rel.type === "has-many" && rel_many[k]) {
+                        delete row[k];
+                        const current = rel_many[k].ops.get(row);
+                        if (current && found && found[k] && current.tobe) {
+                          let cur_matches = new Set<any>();
+                          for (const tobe of current.tobe) {
+                            let tobe_found = false;
+                            for (const cur of found[k]) {
+                              let matched_all = true;
+                              for (const [k, v] of Object.entries(tobe)) {
+                                if (cur[k] !== v) {
+                                  matched_all = false;
+                                  break;
+                                }
+                              }
+                              if (matched_all) {
+                                cur_matches.add(cur);
+                                tobe_found = true;
                                 break;
                               }
                             }
-                            if (matched_all) {
-                              cur_matches.add(cur);
-                              tobe_found = true;
-                              break;
+                            if (!tobe_found) {
+                              current.insert.add(tobe);
                             }
                           }
-                          if (!tobe_found) {
-                            current.insert.add(tobe);
+
+                          for (const cur of found[k]) {
+                            if (!cur_matches.has(cur)) {
+                              current.delete.add(cur);
+                            }
                           }
-                        }
 
-                        for (const cur of found[k]) {
-                          if (!cur_matches.has(cur)) {
-                            current.delete.add(cur);
-                          }
-                        }
+                          row[k] = {
+                            createMany: { data: [...current.insert] },
+                          };
 
-                        row[k] = { createMany: { data: [...current.insert] } };
-
-                        if (current.delete.size > 0) {
-                          for (const d of current.delete) {
-                            transactions.push(
-                              prisma[rel_many[k].to].delete({ where: d }),
-                            );
+                          if (current.delete.size > 0) {
+                            for (const d of current.delete) {
+                              transactions.push(
+                                prisma[rel_many[k].to].delete({ where: d })
+                              );
+                            }
                           }
                         }
                       }
@@ -276,7 +280,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   transactions.push(
                     prisma[table].create({
                       data: row,
-                    }),
+                    })
                   );
                 }
               }
@@ -304,7 +308,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   }
 
                   transactions.push(
-                    prisma[table].update({ data: row, where, select }),
+                    prisma[table].update({ data: row, where, select })
                   );
                 }
               }
@@ -368,7 +372,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                 tableInstance.updateMany({
                   where: item.where,
                   data: item.data,
-                }),
+                })
               );
             }
           }
@@ -435,11 +439,11 @@ export const execQuery = async (args: DBArg, prisma: any) => {
             if (col.type === "field" && !col.array) {
               if (col.attributes && col.attributes?.length > 0) {
                 const attr = col.attributes.find(
-                  (e) => e.name !== "id" && e.name !== "default",
+                  (e) => e.name !== "id" && e.name !== "default"
                 );
 
                 const default_val = col.attributes.find(
-                  (e) => e.name === "default",
+                  (e) => e.name === "default"
                 );
                 let is_pk = col.attributes.find((e) => e.name === "id");
 
@@ -511,7 +515,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
 
         if (params[0] && params[0].where) {
           const filtered = Object.values(params[0].where).filter(
-            (e) => e,
+            (e) => e
           ).length;
           if (filtered === 0)
             throw new Error("deleteMany without condition is forbidden");
@@ -590,7 +594,7 @@ const getRels = ({
             });
             if (field && field.type === "field") {
               const rel = field.attributes?.find(
-                (e: any) => e.kind === "field",
+                (e: any) => e.kind === "field"
               );
 
               if (rel && rel.args) {
@@ -609,7 +613,7 @@ const getRels = ({
         }
       } else if (col.attributes) {
         const rel = col.attributes.find(
-          (e: any) => e.type === "attribute" && e.name === "relation",
+          (e: any) => e.type === "attribute" && e.name === "relation"
         );
         if (rel && typeof col.fieldType === "string") {
           const target = schema.findByType("model", {
@@ -635,7 +639,7 @@ const getRels = ({
         });
         if (target) {
           const to = target.properties.find(
-            (e) => e.type === "field" && e.fieldType === table,
+            (e) => e.type === "field" && e.fieldType === table
           );
           if (to && to.type === "field" && (to.attributes?.length || 0) > 0) {
             const rel = to.attributes?.find((e) => e.name === "relation");
