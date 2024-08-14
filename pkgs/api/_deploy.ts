@@ -1,3 +1,4 @@
+import { $ } from "bun";
 import * as fs from "fs";
 import { dirAsync, readAsync, removeAsync, writeAsync } from "fs-jetpack";
 import { apiContext } from "service-srv";
@@ -6,7 +7,6 @@ import { dir } from "utils/dir";
 import { g } from "utils/global";
 import { genEnv, parseEnv } from "utils/parse-env";
 import { restartServer } from "utils/restart";
-import { $ } from "bun";
 
 export const _ = {
   url: "/_deploy",
@@ -27,7 +27,7 @@ export const _ = {
       | { type: "redeploy"; ts: string }
     ) & {
       id_site: string;
-    }
+    },
   ) {
     const { res } = apiContext(this);
 
@@ -103,24 +103,24 @@ export const _ = {
     generator client {
       provider = "prisma-client-js"
     }
-    
+
     datasource db {
       provider = "${type}"
       url      = env("DATABASE_URL")
-    }`
+    }`,
                 );
 
                 try {
                   await Bun.write(
                     dir("app/db/.env"),
-                    `DATABASE_URL=${ENV.DATABASE_URL}`
+                    `DATABASE_URL=${ENV.DATABASE_URL}`,
                   );
                   await $`bun install`.cwd(dir("app/db"));
                   await $`bun prisma db pull --force`.cwd(dir("app/db"));
                   await $`bun prisma generate`.cwd(dir("app/db"));
                   await Bun.write(
                     dir(`${g.datadir}/db-ver`),
-                    Date.now().toString()
+                    Date.now().toString(),
                   );
                 } catch (e) {
                   console.error(e);
@@ -205,7 +205,7 @@ export const _ = {
 export const downloadFile = async (
   url: string,
   filePath: string,
-  progress?: (rec: number, total: number) => void
+  progress?: (rec: number, total: number) => void,
 ) => {
   try {
     const _url = new URL(url);
@@ -238,7 +238,7 @@ export const downloadFile = async (
         if (progress) {
           progress(
             receivedLength,
-            parseInt(res.headers.get("content-length") || "0")
+            parseInt(res.headers.get("content-length") || "0"),
           );
         }
       }

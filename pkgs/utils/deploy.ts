@@ -6,13 +6,12 @@ import {
   removeAsync,
   writeAsync,
 } from "fs-jetpack";
+import { decode } from "msgpackr";
+import { createRouter } from "radix3";
+import { startBrCompress } from "./br-load";
 import { dir } from "./dir";
 import { g } from "./global";
 import { gunzipAsync } from "./gzip";
-import { createRouter } from "radix3";
-import { prodIndex } from "./prod-index";
-import { startBrCompress } from "./br-load";
-import { decode } from "msgpackr";
 
 const decoder = new TextDecoder();
 export const deploy = {
@@ -33,19 +32,19 @@ export const deploy = {
         g.deploy.content = decode(
           await gunzipAsync(
             new Uint8Array(
-              await Bun.file(dir(`app/web/deploy/${ts}.gz`)).arrayBuffer()
-            )
-          )
+              await Bun.file(dir(`app/web/deploy/${ts}.gz`)).arrayBuffer(),
+            ),
+          ),
         );
       } else {
         g.deploy.content = JSON.parse(
           decoder.decode(
             await gunzipAsync(
               new Uint8Array(
-                await Bun.file(dir(`app/web/deploy/${ts}.gz`)).arrayBuffer()
-              )
-            )
-          )
+                await Bun.file(dir(`app/web/deploy/${ts}.gz`)).arrayBuffer(),
+              ),
+            ),
+          ),
         );
       }
 
@@ -99,7 +98,7 @@ export const deploy = {
               await removeAsync(dir(`app/web/server`));
               await dirAsync(dir(`app/web/server`));
               for (const [k, v] of Object.entries(
-                g.deploy.content.code.server
+                g.deploy.content.code.server,
               )) {
                 await writeAsync(dir(`app/web/server/${k}`), v);
               }
@@ -143,10 +142,10 @@ export const deploy = {
     }
 
     console.log(
-      `Downloading site deploy: ${this.config.site_id} [ts: ${this.config.deploy.ts}] ${base_url}`
+      `Downloading site deploy: ${this.config.site_id} [ts: ${this.config.deploy.ts}] ${base_url}`,
     );
     const res = await fetch(
-      `${base_url}/prod-zip/${this.config.site_id}?ts=${Date.now()}&msgpack=1`
+      `${base_url}/prod-zip/${this.config.site_id}?ts=${Date.now()}&msgpack=1`,
     );
     const ts = Date.now();
 
@@ -188,13 +187,13 @@ export const deploy = {
   saveConfig() {
     return Bun.write(
       Bun.file(dir(`app/web/config.json`)),
-      JSON.stringify(this.config, null, 2)
+      JSON.stringify(this.config, null, 2),
     );
   },
   has_gz() {
     if (this.config.deploy.ts) {
       return Bun.file(
-        dir(`app/web/deploy/${this.config.deploy.ts}.gz`)
+        dir(`app/web/deploy/${this.config.deploy.ts}.gz`),
       ).exists();
     }
 

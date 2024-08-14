@@ -1,13 +1,13 @@
 import { file } from "bun";
-import { existsAsync, inspectAsync, listAsync } from "fs-jetpack";
+import { inspectAsync, listAsync } from "fs-jetpack";
 import { join } from "path";
 import { createRouter } from "radix3";
+import { prodIndex } from "utils/prod-index";
 import { dir } from "../utils/dir";
 import { g } from "../utils/global";
 import { parseArgs } from "./parse-args";
 import { serveAPI } from "./serve-api";
 import { serveWeb } from "./serve-web";
-import { prodIndex } from "utils/prod-index";
 
 export const createServer = async () => {
   g.router = createRouter({ strictTrailingSlash: true });
@@ -33,8 +33,8 @@ export const createServer = async () => {
           } catch (e) {
             g.log.warn(
               `Failed to import app/srv/api${importPath.substring(
-                (root || path).length
-              )}`
+                (root || path).length,
+              )}`,
             );
 
             const f = file(importPath);
@@ -92,6 +92,7 @@ export const createServer = async () => {
           if (g.deploy.content) {
             const core = g.deploy.content.code.core;
             const site = g.deploy.content.code.site;
+            const pub = g.deploy.content.public;
 
             let pathname = url.pathname;
             if (url.pathname[0] === "/") pathname = pathname.substring(1);
@@ -112,6 +113,7 @@ export const createServer = async () => {
 
             if (core[pathname]) content = core[pathname];
             else if (site[pathname]) content = site[pathname];
+            else if (pub[pathname]) content = pub[pathname];
 
             if (content) {
               return await serveWeb({
