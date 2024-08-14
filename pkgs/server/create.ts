@@ -70,8 +70,9 @@ export const createServer = async () => {
         process.exit();
       }
     });
-    await ensureNotRunning();
   }
+
+  await ensureNotRunning();
 
   g.server = Bun.serve({
     port: g.port,

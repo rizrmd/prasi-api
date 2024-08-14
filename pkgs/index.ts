@@ -3,7 +3,6 @@ import { dirAsync, existsAsync } from "fs-jetpack";
 import { deploy } from "utils/deploy";
 import { startDevWatcher } from "utils/dev-watcher";
 import { dir } from "utils/dir";
-import { ensureNotRunning } from "utils/ensure";
 import { genEnv, parseEnv } from "utils/parse-env";
 import { preparePrisma } from "utils/prisma";
 import { generateAPIFrm } from "./server/api-frm";
@@ -48,9 +47,6 @@ if (!process.env.PORT) {
 
 await preparePrisma();
 await createLogger();
-if (g.mode !== "prod") {
-  await ensureNotRunning();
-}
 
 if (g.db) {
   try {
