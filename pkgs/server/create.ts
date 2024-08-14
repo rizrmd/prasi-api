@@ -2,6 +2,7 @@ import { file } from "bun";
 import { inspectAsync, listAsync } from "fs-jetpack";
 import { join } from "path";
 import { createRouter } from "radix3";
+import { ensureNotRunning } from "utils/ensure";
 import { prodIndex } from "utils/prod-index";
 import { dir } from "../utils/dir";
 import { g } from "../utils/global";
@@ -61,6 +62,16 @@ export const createServer = async () => {
       return arg;
     };
   };
+
+  if (g.mode === "prod") {
+    addEventListener("message", (e) => {
+      if (e.data === "stop-server") {
+        g.server.stop();
+        process.exit();
+      }
+    });
+    await ensureNotRunning();
+  }
 
   g.server = Bun.serve({
     port: g.port,

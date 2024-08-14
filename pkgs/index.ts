@@ -48,7 +48,9 @@ if (!process.env.PORT) {
 
 await preparePrisma();
 await createLogger();
-await ensureNotRunning();
+if (g.mode !== "prod") {
+  await ensureNotRunning();
+}
 
 if (g.db) {
   try {

@@ -4,6 +4,7 @@ import { g } from "./global";
 export const restartServer = () => {
   if (g.mode === "dev") {
     $`bun ${g.mode}`;
+  } else {
+    postMessage("restart");
   }
-  process.exit(0);
 };

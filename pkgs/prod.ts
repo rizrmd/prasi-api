@@ -1,40 +1,23 @@
-import { Subprocess } from "bun";
 import { $ } from "execa";
 import exitHook from "exit-hook";
 import { existsAsync } from "fs-jetpack";
 import { dir } from "utils/dir";
-import { checkPort, randomBetween } from "utils/ensure";
 import { g } from "utils/global";
 
 g.main = {
-  process: null as null | Subprocess,
+  process: null as null | Worker,
   restart: {
     timeout: null as any,
   },
 };
 const main = g.main;
-let port = 0;
-
-try {
-  port = parseInt(await Bun.file(".pm_port").text());
-} catch (e) {
-  while (true) {
-    port = randomBetween(5000, 15000);
-    if (await checkPort(port)) {
-      Bun.write(".pm_port", port.toString());
-      break;
-    }
-  }
-}
 
 exitHook((signal) => {
-  if (main.process && !main.process.killed) {
-    main.process.kill();
+  if (main.process) {
+    main.process.terminate();
   }
   console.log(`Exiting with signal: ${signal}`);
 });
-
-console.log("Process Manager running at port:", port);
 
 if (process.env.DATABASE_URL) {
   if (
@@ -44,7 +27,7 @@ if (process.env.DATABASE_URL) {
     try {
       await Bun.write(
         dir("app/db/.env"),
-        `DATABASE_URL=${process.env.DATABASE_URL}`
+        `DATABASE_URL=${process.env.DATABASE_URL}`,
       );
       await $({ cwd: dir(`app/db`) })`bun install`;
       await $({ cwd: dir(`app/db`) })`bun prisma db pull --force`;
@@ -57,30 +40,21 @@ if (process.env.DATABASE_URL) {
 
 const startMain = () => {
   let mode = "started";
-  if (main.process && !main.process.killed) return;
-  if (main.process && main.process.killed) mode = "restarted";
 
-  main.process = Bun.spawn({
-    cmd: ["bun", "run", "pkgs/index.ts"],
-    cwd: process.cwd(),
-    stdout: "inherit",
-    stderr: "inherit",
-    onExit(subprocess, exitCode, signalCode, error) {
-      clearTimeout(main.restart.timeout);
-      main.restart.timeout = setTimeout(startMain, 500);
-    },
-  });
-  console.log(`Main process`, mode, "pid:", main.process.pid);
-};
-startMain();
-Bun.serve({
-  port,
-  async fetch(request, server) {
-    if (main.process && !main.process.killed) {
-      main.process.kill();
-      await main.process.exited;
+  const worker = new Worker("pkgs/index.ts");
+  worker.onmessage = (event) => {
+    if (event.data === "restart") {
+      const oldprocess = main.process;
+      setTimeout(() => {
+        oldprocess?.postMessage("stop-server");
+      }, 3000);
+      main.process = startMain();
     }
-
-    return new Response("OK");
-  },
-});
+  };
+  worker.addEventListener("close", (event) => {
+    console.log("Main worker being closed, thread-id: " + worker.threadId);
+  });
+  console.log(`Main worker`, mode, "thread-id:", worker.threadId);
+  return worker;
+};
+main.process = startMain();
