@@ -9,6 +9,7 @@ import { g } from "../utils/global";
 import { parseArgs } from "./parse-args";
 import { serveAPI } from "./serve-api";
 import { serveWeb } from "./serve-web";
+import exitHook from "exit-hook";
 
 export const createServer = async () => {
   g.router = createRouter({ strictTrailingSlash: true });
@@ -64,11 +65,8 @@ export const createServer = async () => {
   };
 
   if (g.mode === "prod") {
-    addEventListener("message", (e) => {
-      if (e.data === "stop-server") {
-        g.server.stop();
-        postMessage("terminate");
-      }
+    exitHook((signal) => {
+      g.server.stop();
     });
   }
 
