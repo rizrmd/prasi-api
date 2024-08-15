@@ -48,6 +48,7 @@ export const g = global as unknown as {
   firebaseInit: boolean;
   firebase: admin.app.App;
   main: {
+    old: null | Worker;
     process: null | Worker;
     restart: {
       timeout: any;

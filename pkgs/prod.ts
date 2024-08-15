@@ -5,7 +5,8 @@ import { dir } from "utils/dir";
 import { g } from "utils/global";
 
 g.main = {
-  process: null as null | Worker,
+  old: null,
+  process: null,
   restart: {
     timeout: null as any,
   },
@@ -27,7 +28,7 @@ if (process.env.DATABASE_URL) {
     try {
       await Bun.write(
         dir("app/db/.env"),
-        `DATABASE_URL=${process.env.DATABASE_URL}`,
+        `DATABASE_URL=${process.env.DATABASE_URL}`
       );
       await $({ cwd: dir(`app/db`) })`bun install`;
       await $({ cwd: dir(`app/db`) })`bun prisma db pull --force`;
@@ -44,9 +45,11 @@ const startMain = () => {
   const worker = new Worker("pkgs/index.ts");
   worker.onmessage = (event) => {
     if (event.data === "restart") {
-      const oldprocess = main.process;
+      main.old = main.process;
       setTimeout(() => {
-        oldprocess?.postMessage("stop-server");
+        if (main.old) {
+          main.old.postMessage("stop-server");
+        }
       }, 1000);
       main.process = startMain();
     }
