@@ -58,3 +58,4 @@ const startMain = () => {
   return worker;
 };
 main.process = startMain();
+setTimeout(() => new Promise(() => 0), 0);
