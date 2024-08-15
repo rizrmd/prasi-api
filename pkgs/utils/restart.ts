@@ -5,6 +5,6 @@ export const restartServer = () => {
   if (g.mode === "dev") {
     $`bun ${g.mode}`;
   } else {
-    postMessage("restart");
+    process?.send?.("restart");
   }
 };

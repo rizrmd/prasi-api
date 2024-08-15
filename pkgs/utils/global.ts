@@ -1,4 +1,4 @@
-import { Server, WebSocketHandler } from "bun";
+import { Server, Subprocess, WebSocketHandler } from "bun";
 import { Logger } from "pino";
 import { RadixRouter } from "radix3";
 import { PrismaClient } from "../../app/db/db";
@@ -48,8 +48,7 @@ export const g = global as unknown as {
   firebaseInit: boolean;
   firebase: admin.app.App;
   main: {
-    old: null | Worker;
-    process: null | Worker;
+    process: null | Subprocess;
     restart: {
       timeout: any;
     };
@@ -89,7 +88,7 @@ export const g = global as unknown as {
     gz: Record<string, Uint8Array>;
   };
   createServer: (
-    arg: PrasiServer & { api: any; db: any },
+    arg: PrasiServer & { api: any; db: any }
   ) => (site_id: string) => Promise<PrasiServer & { api: any; db: any }>;
   deploy: {
     init: boolean;

@@ -168,7 +168,7 @@ export const _ = {
           const deploys = fs.readdirSync(dir(`/app/web/deploy`));
 
           if (g.mode === "prod") {
-            postMessage("restart");
+            process?.send?.("restart");
           }
 
           return {

@@ -5,7 +5,6 @@ import { dir } from "utils/dir";
 import { g } from "utils/global";
 
 g.main = {
-  old: null,
   process: null,
   restart: {
     timeout: null as any,
@@ -15,7 +14,7 @@ const main = g.main;
 
 exitHook((signal) => {
   if (main.process) {
-    main.process.terminate();
+    main.process.kill();
   }
   console.log(`Exiting with signal: ${signal}`);
 });
@@ -40,25 +39,24 @@ if (process.env.DATABASE_URL) {
 }
 
 const startMain = () => {
-  let mode = "started";
-
-  const worker = new Worker("pkgs/index.ts");
-  worker.onmessage = (event) => {
-    if (event.data === "restart") {
-      main.old = main.process;
-      setTimeout(() => {
-        if (main.old) {
-          main.old.terminate();
-        }
-      }, 1000);
-      main.process = startMain();
-    }
-  };
-  worker.addEventListener("close", (event) => {
-    console.log("Main worker being closed, thread-id: " + worker.threadId);
+  return Bun.spawn({
+    cmd: ["bun", "run", "pkgs/index.ts"],
+    cwd: process.cwd(),
+    stdout: "inherit",
+    stderr: "inherit",
+    ipc(message, subprocess) {
+      if (message === "restart") {
+        setTimeout(() => {
+          subprocess.kill();
+        }, 1000);
+        main.process = startMain();
+      }
+    },
+    onExit(subprocess, exitCode, signalCode, error) {
+      clearTimeout(main.restart.timeout);
+      main.restart.timeout = setTimeout(startMain, 500);
+    },
   });
-  console.log(`Main worker`, mode, "thread-id:", worker.threadId);
-  return worker;
 };
 main.process = startMain();
 setTimeout(() => new Promise(() => 0), 0);
