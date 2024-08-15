@@ -47,7 +47,7 @@ const startMain = () => {
       const oldprocess = main.process;
       setTimeout(() => {
         oldprocess?.postMessage("stop-server");
-      }, 3000);
+      }, 1000);
       main.process = startMain();
     }
   };
