@@ -34,8 +34,8 @@ export const createServer = async () => {
           } catch (e) {
             g.log.warn(
               `Failed to import app/srv/api${importPath.substring(
-                (root || path).length,
-              )}`,
+                (root || path).length
+              )}`
             );
 
             const f = file(importPath);
@@ -67,7 +67,7 @@ export const createServer = async () => {
     addEventListener("message", (e) => {
       if (e.data === "stop-server") {
         g.server.stop();
-        process.exit();
+        postMessage("terminate");
       }
     });
   }

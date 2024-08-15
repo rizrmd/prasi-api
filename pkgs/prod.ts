@@ -44,6 +44,9 @@ const startMain = () => {
 
   const worker = new Worker("pkgs/index.ts");
   worker.onmessage = (event) => {
+    if (event.data === "terminate") {
+      worker.terminate();
+    }
     if (event.data === "restart") {
       main.old = main.process;
       setTimeout(() => {
