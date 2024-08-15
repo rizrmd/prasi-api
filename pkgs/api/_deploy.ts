@@ -27,7 +27,7 @@ export const _ = {
       | { type: "redeploy"; ts: string }
     ) & {
       id_site: string;
-    },
+    }
   ) {
     const { res } = apiContext(this);
 
@@ -107,20 +107,20 @@ export const _ = {
     datasource db {
       provider = "${type}"
       url      = env("DATABASE_URL")
-    }`,
+    }`
                 );
 
                 try {
                   await Bun.write(
                     dir("app/db/.env"),
-                    `DATABASE_URL=${ENV.DATABASE_URL}`,
+                    `DATABASE_URL=${ENV.DATABASE_URL}`
                   );
                   await $`bun install`.cwd(dir("app/db"));
                   await $`bun prisma db pull --force`.cwd(dir("app/db"));
                   await $`bun prisma generate`.cwd(dir("app/db"));
                   await Bun.write(
                     dir(`${g.datadir}/db-ver`),
-                    Date.now().toString(),
+                    Date.now().toString()
                   );
                 } catch (e) {
                   console.error(e);
@@ -168,9 +168,7 @@ export const _ = {
           const deploys = fs.readdirSync(dir(`/app/web/deploy`));
 
           if (g.mode === "prod") {
-            setTimeout(() => {
-              process.exit();
-            }, 500);
+            postMessage("restart");
           }
 
           return {
@@ -205,7 +203,7 @@ export const _ = {
 export const downloadFile = async (
   url: string,
   filePath: string,
-  progress?: (rec: number, total: number) => void,
+  progress?: (rec: number, total: number) => void
 ) => {
   try {
     const _url = new URL(url);
@@ -238,7 +236,7 @@ export const downloadFile = async (
         if (progress) {
           progress(
             receivedLength,
-            parseInt(res.headers.get("content-length") || "0"),
+            parseInt(res.headers.get("content-length") || "0")
           );
         }
       }
