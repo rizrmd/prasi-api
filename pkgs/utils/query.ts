@@ -24,9 +24,15 @@ export const execQuery = async (args: DBArg, prisma: any) => {
         mode: "field" | "raw";
       };
     };
+    
     if (arg) {
       const { table, where, data } = arg;
-      const mode = arg.mode || "field";
+      let mode = arg.mode || "field";
+
+      if (mode !== "field") {
+        mode = "raw";
+      }
+      
       if (table && where && data) {
         const transactions = [];
         const tx_delete_index = new Set<number>();
@@ -51,6 +57,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                 }
               }
             }
+
             if (
               col.type === "attribute" &&
               col.name === "id" &&
