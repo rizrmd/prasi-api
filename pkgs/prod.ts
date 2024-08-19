@@ -48,7 +48,7 @@ const startMain = () => {
       if (message === "restart") {
         setTimeout(() => {
           subprocess.kill();
-        }, 1000);
+        }, 5000);
         main.process = startMain();
       }
     },
