@@ -30,6 +30,15 @@ if (!(await existsAsync(dir("app")))) {
   await dirAsync(dir("app"));
 }
 
+process.on("message", (message) => {
+  if (message === "kill") {
+    if (g.server) {
+      g.server.stop(true);
+      process.exit();
+    }
+  }
+});
+
 if (!(await existsAsync(dir("app/db")))) {
   await $`unzip -o pkgs/zip/dbzip -d app`;
 }

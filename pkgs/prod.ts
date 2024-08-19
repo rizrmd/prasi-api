@@ -47,7 +47,7 @@ const startMain = (argv?: string) => {
     ipc(message, subprocess) {
       if (message === "restart") {
         setTimeout(() => {
-          subprocess.kill();
+          subprocess.send("kill");
         }, 5000);
         main.process = startMain("skip_types");
       }
