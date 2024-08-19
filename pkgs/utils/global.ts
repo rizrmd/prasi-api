@@ -47,6 +47,7 @@ export const g = global as unknown as {
   log: Logger;
   firebaseInit: boolean;
   firebase: admin.app.App;
+  skip_build_types: boolean;
   main: {
     process: null | Subprocess;
     restart: {

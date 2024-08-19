@@ -12,6 +12,10 @@ import { config } from "./utils/config";
 import { g } from "./utils/global";
 import { createLogger } from "./utils/logger";
 
+if (process.argv[process.argv.length - 1] === "skip_types") {
+  g.skip_build_types = true;
+}
+
 let db_env: any = {};
 try {
   db_env = parseEnv(await Bun.file(dir("app/db/.env")).text());

@@ -38,9 +38,9 @@ if (process.env.DATABASE_URL) {
   }
 }
 
-const startMain = () => {
+const startMain = (argv?: string) => {
   return Bun.spawn({
-    cmd: ["bun", "run", "pkgs/index.ts"],
+    cmd: ["bun", "run", "pkgs/index.ts", argv].filter((e) => e) as string[],
     cwd: process.cwd(),
     stdout: "inherit",
     stderr: "inherit",
@@ -49,7 +49,7 @@ const startMain = () => {
         setTimeout(() => {
           subprocess.kill();
         }, 5000);
-        main.process = startMain();
+        main.process = startMain("skip_types");
       }
     },
     onExit(subprocess, exitCode, signalCode, error) {
