@@ -49,7 +49,7 @@ const startMain = (argv?: string) => {
       if (message === "restart") {
         setTimeout(() => {
           subprocess.send("kill");
-        }, 5000);
+        }, 1000);
         main.slave_process = startMain("skip_types");
       }
     },
