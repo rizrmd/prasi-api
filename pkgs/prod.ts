@@ -6,6 +6,7 @@ import { g } from "utils/global";
 
 g.main = {
   process: null,
+  slave_process: null,
   restart: {
     timeout: null as any,
   },
@@ -49,12 +50,18 @@ const startMain = (argv?: string) => {
         setTimeout(() => {
           subprocess.send("kill");
         }, 5000);
-        main.process = startMain("skip_types");
+        main.slave_process = startMain("skip_types");
       }
     },
     onExit(subprocess, exitCode, signalCode, error) {
-      clearTimeout(main.restart.timeout);
-      main.restart.timeout = setTimeout(startMain, 500);
+      if (main.process === subprocess) {
+        main.process = main.slave_process;
+        main.slave_process = null;
+      } else if (main.slave_process === subprocess) {
+        console.error("Failed to start slave process");
+      } else {
+        main.restart.timeout = setTimeout(startMain, 500);
+      }
     },
   });
 };

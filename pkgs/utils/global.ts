@@ -50,6 +50,7 @@ export const g = global as unknown as {
   skip_build_types: boolean;
   main: {
     process: null | Subprocess;
+    slave_process: null | Subprocess;
     restart: {
       timeout: any;
     };
