@@ -24,7 +24,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
         mode: "field" | "raw";
       };
     };
-    
+
     if (arg) {
       const { table, where, data } = arg;
       let mode = arg.mode || "field";
@@ -32,7 +32,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
       if (mode !== "field") {
         mode = "raw";
       }
-      
+
       if (table && where && data) {
         const transactions = [];
         const tx_delete_index = new Set<number>();
@@ -97,73 +97,71 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                 }
               >;
 
-              if (mode !== "raw") {
-                for (const row of data) {
-                  for (const [k, v] of Object.entries(row) as any) {
-                    const rel = rels[k];
-                    if (rel) {
-                      if (rel.type === "has-one") {
-                        const to = rel.to.fields[0];
-                        if (!v.connect && v[to]) {
-                          let newv = { connect: { [to]: v[to] } };
-                          row[k] = newv;
-                        }
-                      } else if (rel.type === "has-many") {
-                        if (!rel_many[k]) {
-                          const schema_table = schema.findByType("model", {
-                            name: rel.to.table,
-                          });
+              for (const row of data) {
+                for (const [k, v] of Object.entries(row) as any) {
+                  const rel = rels[k];
+                  if (rel) {
+                    if (rel.type === "has-one") {
+                      const to = rel.to.fields[0];
+                      if (!v.connect && v[to]) {
+                        let newv = { connect: { [to]: v[to] } };
+                        row[k] = newv;
+                      }
+                    } else if (rel.type === "has-many") {
+                      if (!rel_many[k]) {
+                        const schema_table = schema.findByType("model", {
+                          name: rel.to.table,
+                        });
 
-                          let pks: Property[] = [];
-                          if (schema_table) {
-                            for (const col of schema_table.properties) {
-                              if (col.type === "field" && !col.array) {
-                                if (
-                                  col.attributes &&
-                                  col.attributes?.length > 0
-                                ) {
-                                  const is_pk = col.attributes.find(
-                                    (e) => e.name === "id"
-                                  );
-                                  if (is_pk) {
-                                    pks.push(col);
-                                    break;
-                                  }
+                        let pks: Property[] = [];
+                        if (schema_table) {
+                          for (const col of schema_table.properties) {
+                            if (col.type === "field" && !col.array) {
+                              if (
+                                col.attributes &&
+                                col.attributes?.length > 0
+                              ) {
+                                const is_pk = col.attributes.find(
+                                  (e) => e.name === "id"
+                                );
+                                if (is_pk) {
+                                  pks.push(col);
+                                  break;
                                 }
                               }
                             }
                           }
-
-                          rel_many[k] = {
-                            to: rel.to.table,
-                            select: new Set(),
-                            from: rel.from.table,
-                            pk: pks.map((e) => e.name),
-                            ops: new Map(),
-                          };
                         }
 
-                        const tobe = createRelMany({
-                          row,
-                          k,
-                          schema,
-                          rel,
-                        });
+                        rel_many[k] = {
+                          to: rel.to.table,
+                          select: new Set(),
+                          from: rel.from.table,
+                          pk: pks.map((e) => e.name),
+                          ops: new Map(),
+                        };
+                      }
 
-                        if (tobe) {
-                          for (const row of tobe) {
-                            for (const key of Object.keys(row)) {
-                              rel_many[k].select.add(key);
-                            }
+                      const tobe = createRelMany({
+                        row,
+                        k,
+                        schema,
+                        rel,
+                      });
+
+                      if (tobe) {
+                        for (const row of tobe) {
+                          for (const key of Object.keys(row)) {
+                            rel_many[k].select.add(key);
                           }
                         }
-
-                        rel_many[k].ops.set(row, {
-                          delete: new Set(),
-                          insert: new Set(),
-                          tobe: tobe || [],
-                        });
                       }
+
+                      rel_many[k].ops.set(row, {
+                        delete: new Set(),
+                        insert: new Set(),
+                        tobe: tobe || [],
+                      });
                     }
                   }
                 }
@@ -204,52 +202,50 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   return true;
                 });
 
-                if (mode !== "raw") {
-                  for (const [k, v] of Object.entries(row) as any) {
-                    const rel = rels[k];
-                    if (rel) {
-                      if (rel.type === "has-many" && rel_many[k]) {
-                        delete row[k];
-                        const current = rel_many[k].ops.get(row);
-                        if (current && found && found[k] && current.tobe) {
-                          let cur_matches = new Set<any>();
-                          for (const tobe of current.tobe) {
-                            let tobe_found = false;
-                            for (const cur of found[k]) {
-                              let matched_all = true;
-                              for (const [k, v] of Object.entries(tobe)) {
-                                if (cur[k] !== v) {
-                                  matched_all = false;
-                                  break;
-                                }
-                              }
-                              if (matched_all) {
-                                cur_matches.add(cur);
-                                tobe_found = true;
+                for (const [k, v] of Object.entries(row) as any) {
+                  const rel = rels[k];
+                  if (rel) {
+                    if (rel.type === "has-many" && rel_many[k]) {
+                      delete row[k];
+                      const current = rel_many[k].ops.get(row);
+                      if (current && found && found[k] && current.tobe) {
+                        let cur_matches = new Set<any>();
+                        for (const tobe of current.tobe) {
+                          let tobe_found = false;
+                          for (const cur of found[k]) {
+                            let matched_all = true;
+                            for (const [k, v] of Object.entries(tobe)) {
+                              if (cur[k] !== v) {
+                                matched_all = false;
                                 break;
                               }
                             }
-                            if (!tobe_found) {
-                              current.insert.add(tobe);
+                            if (matched_all) {
+                              cur_matches.add(cur);
+                              tobe_found = true;
+                              break;
                             }
                           }
-
-                          for (const cur of found[k]) {
-                            if (!cur_matches.has(cur)) {
-                              current.delete.add(cur);
-                            }
+                          if (!tobe_found) {
+                            current.insert.add(tobe);
                           }
+                        }
 
-                          row[k] = {
-                            createMany: { data: [...current.insert] },
-                          };
+                        for (const cur of found[k]) {
+                          if (!cur_matches.has(cur)) {
+                            current.delete.add(cur);
+                          }
+                        }
 
-                          if (current.delete.size > 0) {
-                            for (const d of current.delete) {
-                              transactions.push(
-                                prisma[rel_many[k].to].delete({ where: d })
-                              );
-                            }
+                        row[k] = {
+                          createMany: { data: [...current.insert] },
+                        };
+
+                        if (current.delete.size > 0) {
+                          for (const d of current.delete) {
+                            transactions.push(
+                              prisma[rel_many[k].to].delete({ where: d })
+                            );
                           }
                         }
                       }
