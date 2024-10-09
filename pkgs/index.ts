@@ -11,6 +11,7 @@ import { prepareAPITypes } from "./server/prep-api-ts";
 import { config } from "./utils/config";
 import { g } from "./utils/global";
 import { createLogger } from "./utils/logger";
+import { execQuery } from "utils/query";
 
 if (process.argv[process.argv.length - 1] === "skip_types") {
   g.skip_build_types = true;

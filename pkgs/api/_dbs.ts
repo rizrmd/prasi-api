@@ -8,7 +8,8 @@ export const _ = {
   url: "/_dbs/*",
   raw: true,
   async api() {
-    const { req, res } = apiContext(this);
+    const ctx = apiContext(this);
+    const { req, res } = ctx;
     if (typeof g.db !== "undefined") {
       if (req.params._ === "check") {
         return { mode: "encrypted" };

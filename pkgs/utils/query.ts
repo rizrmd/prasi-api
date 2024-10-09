@@ -194,13 +194,20 @@ export const execQuery = async (args: DBArg, prisma: any) => {
 
               const marker = {} as any;
               for (const row of data) {
-                const found = existing.find((item, idx) => {
+
+                let found = existing.find((item, idx) => {
                   for (const pk of pks) {
                     if (item[pk.name] !== row[pk.name]) return false;
                   }
                   exists_idx.add(idx);
                   return true;
                 });
+
+                if (!found) {
+                  for (const pk of pks) {
+                    if (row[pk.name]) found = row;
+                  }
+                }
 
                 for (const [k, v] of Object.entries(row) as any) {
                   const rel = rels[k];
@@ -290,6 +297,7 @@ export const execQuery = async (args: DBArg, prisma: any) => {
                   );
                 }
               }
+
 
               if (updates.length > 0) {
                 for (const row of updates) {
