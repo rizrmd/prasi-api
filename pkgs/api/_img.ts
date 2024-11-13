@@ -73,7 +73,7 @@ export const _ = {
             let out = img.resize(arg).webp({ quality: 75 });
             out = out.webp();
 
-            await Bun.write(file_name, await out.toBuffer());
+            await Bun.write(file_name, new Uint8Array(await out.toBuffer()));
             file = Bun.file(file_name);
           }
 
