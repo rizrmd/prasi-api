@@ -139,6 +139,7 @@ export const createResponse = (
     "max-age=31536000; includeSubDomains; preload"
   );
 
+  res.headers.append("X-Content-Type-Options", "nosniff");
   res.headers.append("X-Frame-Options", "SAMEORIGIN");
 
   return res;
