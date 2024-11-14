@@ -134,5 +134,10 @@ export const createResponse = (
     res.headers.append("content-type", "application/json");
   }
 
+  res.headers.append(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains; preload"
+  );
+
   return res;
 };
