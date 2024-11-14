@@ -15,7 +15,7 @@ import { gunzipAsync } from "./gzip";
 
 const decoder = new TextDecoder();
 export const deploy = {
-  async init() {
+  async init(load_from?: string) {
     await dirAsync(dir(`app/web/deploy`));
 
     if (!(await this.has_gz())) {
@@ -32,19 +32,21 @@ export const deploy = {
         g.deploy.content = decode(
           await gunzipAsync(
             new Uint8Array(
-              await Bun.file(dir(`app/web/deploy/${ts}.gz`)).arrayBuffer(),
-            ),
-          ),
+              await Bun.file(dir(`app/web/deploy/${ts}.gz`)).arrayBuffer()
+            )
+          )
         );
       } else {
         g.deploy.content = JSON.parse(
           decoder.decode(
-            await gunzipAsync(
-              new Uint8Array(
-                await Bun.file(dir(`app/web/deploy/${ts}.gz`)).arrayBuffer(),
-              ),
-            ),
-          ),
+            new Uint8Array(
+              await gunzipAsync(
+                new Uint8Array(
+                  await Bun.file(dir(`app/web/deploy/${ts}.gz`)).arrayBuffer()
+                )
+              )
+            )
+          )
         );
       }
 
@@ -98,7 +100,7 @@ export const deploy = {
               await removeAsync(dir(`app/web/server`));
               await dirAsync(dir(`app/web/server`));
               for (const [k, v] of Object.entries(
-                g.deploy.content.code.server,
+                g.deploy.content.code.server
               )) {
                 await writeAsync(dir(`app/web/server/${k}`), v);
               }
@@ -130,27 +132,37 @@ export const deploy = {
         console.error(e.message, `[app/web/deploy/${ts}.gz]`);
     }
   },
-  async run() {
+  async run(load_from?: string) {
     if (!this.config.site_id) {
       console.log("site_id is not found on app/web/config.json");
       return;
     }
+    let buf: ArrayBuffer | null = null;
+    if (!load_from) {
+      let base_url = "https://prasi.avolut.com";
+      if (g.mode === "dev") {
+        base_url = "http://localhost:4550";
+      }
 
-    let base_url = "https://prasi.avolut.com";
-    if (g.mode === "dev") {
-      base_url = "http://localhost:4550";
+      console.log(
+        `Downloading site deploy: ${this.config.site_id} [ts: ${this.config.deploy.ts}] ${base_url}`
+      );
+      const res = await fetch(
+        `${base_url}/prod-zip/${this.config.site_id}?ts=${Date.now()}&msgpack=1`
+      );
+      buf = await res.arrayBuffer();
+    } else {
+      const res = await fetch(load_from);
+      buf = await res.arrayBuffer();
     }
 
-    console.log(
-      `Downloading site deploy: ${this.config.site_id} [ts: ${this.config.deploy.ts}] ${base_url}`,
-    );
-    const res = await fetch(
-      `${base_url}/prod-zip/${this.config.site_id}?ts=${Date.now()}&msgpack=1`,
-    );
+    if (!buf) {
+      console.log("Failed to download site deploy");
+      return;
+    }
     const ts = Date.now();
-
     const file = Bun.file(dir(`app/web/deploy/${ts}.gz`));
-    await Bun.write(file, await res.arrayBuffer());
+    await Bun.write(file, buf);
     await Bun.write(dir(`app/web/deploy/${ts}.mpack`), "ok");
     this.config.deploy.ts = ts + "";
 
@@ -187,13 +199,13 @@ export const deploy = {
   saveConfig() {
     return Bun.write(
       Bun.file(dir(`app/web/config.json`)),
-      JSON.stringify(this.config, null, 2),
+      JSON.stringify(this.config, null, 2)
     );
   },
   has_gz() {
     if (this.config.deploy.ts) {
       return Bun.file(
-        dir(`app/web/deploy/${this.config.deploy.ts}.gz`),
+        dir(`app/web/deploy/${this.config.deploy.ts}.gz`)
       ).exists();
     }
 

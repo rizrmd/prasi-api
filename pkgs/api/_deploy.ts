@@ -22,17 +22,23 @@ export const _ = {
       | { type: "domain-add"; domain: string }
       | { type: "domain-del"; domain: string }
       | { type: "deploy-del"; ts: string }
-      | { type: "deploy"; dlurl: string }
+      | { type: "deploy"; load_from?: string }
       | { type: "deploy-status" }
       | { type: "redeploy"; ts: string }
     ) & {
       id_site: string;
     }
   ) {
-    const { res } = apiContext(this);
+    const { res, req } = apiContext(this);
 
     const path = dir(`app/web/`);
     await dirAsync(path);
+
+    if (typeof req.query_parameters["export"] !== "undefined") {
+      return new Response(
+        Bun.file(dir(`app/web/deploy/${deploy.config.deploy.ts}.gz`))
+      );
+    }
 
     switch (action.type) {
       case "check":
@@ -164,7 +170,7 @@ export const _ = {
 
           await deploy.saveConfig();
           deploy.config.deploy.ts = Date.now() + "";
-          await deploy.init();
+          await deploy.init(action.load_from);
           const deploys = fs.readdirSync(dir(`/app/web/deploy`));
 
           if (g.mode === "prod") {
