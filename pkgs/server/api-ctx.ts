@@ -140,7 +140,6 @@ export const createResponse = (
   );
 
   res.headers.append("X-Content-Type-Options", "nosniff");
-  res.headers.append("X-Frame-Options", "SAMEORIGIN");
 
   return res;
 };
