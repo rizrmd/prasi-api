@@ -79,11 +79,18 @@ export const createServer = async () => {
       const url = new URL(req.url) as URL;
       url.pathname = url.pathname.replace(/\/+/g, "/");
 
-
       const prasi = {};
       const index = prodIndex(g.deploy.config.site_id, prasi);
 
-      const handle = async (req: Request) => {
+      const handle = async (
+        req: Request,
+        opt?: {
+          rewrite?: (arg: {
+            body: Bun.BodyInit;
+            headers: Headers | any;
+          }) => Bun.BodyInit;
+        }
+      ) => {
         const api = await serveAPI(url, req);
 
         if (api) {
@@ -97,6 +104,7 @@ export const createServer = async () => {
               content: index.render(),
               pathname: "index.html",
               cache_accept: req.headers.get("accept-encoding") || "",
+              opt,
             });
           }
 
@@ -117,6 +125,7 @@ export const createServer = async () => {
                 content: index.render(),
                 pathname: "index.html",
                 cache_accept: req.headers.get("accept-encoding") || "",
+                opt,
               });
             }
 
@@ -131,6 +140,7 @@ export const createServer = async () => {
                 content,
                 pathname,
                 cache_accept: req.headers.get("accept-encoding") || "",
+                opt,
               });
             }
           }

@@ -57,6 +57,10 @@ export const createResponse = (
     headers?: any;
     res?: any;
     high_compression?: boolean;
+    rewrite?: (arg: {
+      body: Bun.BodyInit;
+      headers: Headers | any;
+    }) => Bun.BodyInit;
   }
 ) => {
   const status =
@@ -66,10 +70,17 @@ export const createResponse = (
   const is_binary = binaryExtensions.includes(
     mime.getExtension(content_type) || ""
   );
-  let content: any =
-    typeof body === "string" || is_binary ? body : JSON.stringify(body);
-
   const headers = { ...(opt?.headers || {}) } as Record<string, string>;
+
+  let pre_content = body;
+  if (opt?.rewrite) {
+    pre_content = opt.rewrite({ body: pre_content, headers });
+  }
+
+  let content: any =
+    typeof pre_content === "string" || is_binary
+      ? pre_content
+      : JSON.stringify(pre_content);
 
   if (opt?.cache_accept) {
     let cached = false;
@@ -115,12 +126,6 @@ export const createResponse = (
         }
       : undefined
   );
-
-  if (opt?.headers?.["content-type"]?.includes("woff")) {
-    new Response(body, {
-      headers: { "content-type": headers["content-type"] },
-    });
-  }
 
   for (const [k, v] of Object.entries(headers)) {
     res.headers.append(k, v);

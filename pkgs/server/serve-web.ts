@@ -5,6 +5,12 @@ export const serveWeb = async (arg: {
   pathname: string;
   content: string;
   cache_accept: string;
+  opt?: {
+    rewrite?: (arg: {
+      body: Bun.BodyInit;
+      headers: Headers | any;
+    }) => Bun.BodyInit;
+  };
 }) => {
   const type = mime.getType(arg.pathname);
 
