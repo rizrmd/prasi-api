@@ -79,6 +79,7 @@ export const createServer = async () => {
       const url = new URL(req.url) as URL;
       url.pathname = url.pathname.replace(/\/+/g, "/");
 
+
       const prasi = {};
       const index = prodIndex(g.deploy.config.site_id, prasi);
 

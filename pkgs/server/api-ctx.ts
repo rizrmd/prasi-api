@@ -87,21 +87,23 @@ export const createResponse = (
       }
     }
 
-    if (opt?.high_compression) {
-      if (!cached && opt.cache_accept.toLowerCase().includes("gz")) {
-        const content_hash = simpleHash(content);
-        if (!g.cache.gz[content_hash]) {
-          g.cache.gz[content_hash] = Bun.gzipSync(content);
+    if (opt.cache_accept.toLowerCase().includes("gz")) {
+      if (opt?.high_compression) {
+        if (!cached) {
+          const content_hash = simpleHash(content);
+          if (!g.cache.gz[content_hash]) {
+            g.cache.gz[content_hash] = Bun.gzipSync(content);
+          }
+          if (g.cache.gz[content_hash]) {
+            cached = true;
+            content = g.cache.gz[content_hash];
+            headers["content-encoding"] = "gzip";
+          }
         }
-        if (g.cache.gz[content_hash]) {
-          cached = true;
-          content = g.cache.gz[content_hash];
-          headers["content-encoding"] = "gzip";
-        }
+      } else {
+        content = Bun.gzipSync(content);
+        headers["content-encoding"] = "gzip";
       }
-    } else {
-      content = Bun.gzipSync(content);
-      headers["content-encoding"] = "gzip";
     }
   }
 
