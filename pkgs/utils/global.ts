@@ -30,7 +30,15 @@ type PrasiServer = {
     req: Request;
     server: Server;
     mode: "dev" | "prod";
-    handle: (req: Request) => Promise<Response>;
+    handle: (
+      req: Request,
+      opt?: {
+        rewrite?: (arg: {
+          body: Bun.BodyInit;
+          headers: Headers | any;
+        }) => Bun.BodyInit;
+      }
+    ) => Promise<Response>;
     index: { head: string[]; body: string[]; render: () => string };
     prasi: { page_id?: string };
   }) => Promise<Response>;

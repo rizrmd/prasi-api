@@ -18,5 +18,6 @@ export const serveWeb = async (arg: {
     cache_accept: arg.cache_accept,
     high_compression: true,
     headers: !type ? undefined : { "content-type": type },
+    rewrite: arg.opt?.rewrite,
   });
 };
