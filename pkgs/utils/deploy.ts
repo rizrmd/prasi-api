@@ -14,6 +14,27 @@ import { g } from "./global";
 import { gunzipAsync } from "./gzip";
 
 const decoder = new TextDecoder();
+
+const createDbProxy = () => {
+  return new Proxy({}, {
+    get(target, prop) {
+      if (!g.db) {
+        if (typeof prop === 'string') {
+          return new Proxy({}, {
+            get(target, method) {
+              return async () => {
+                throw new Error(`Database connection not available. Cannot execute ${prop}.${String(method)}`);
+              };
+            }
+          });
+        }
+        return undefined;
+      }
+      return g.db[prop];
+    }
+  });
+};
+
 export const deploy = {
   async init(load_from?: string) {
     await dirAsync(dir(`app/web/deploy`));
@@ -112,13 +133,15 @@ export const deploy = {
                 }
               }
 
+              const dbProxy = createDbProxy();
+              
               if (g.server) {
-                await g.deploy.server?.init?.({ port: g.server.port });
+                await g.deploy.server?.init?.({ port: g.server.port, db: dbProxy });
               } else {
                 const inv = setInterval(async () => {
                   if (g.server) {
                     clearInterval(inv);
-                    await g.deploy.server?.init?.({ port: g.server.port });
+                    await g.deploy.server?.init?.({ port: g.server.port, db: dbProxy });
                   }
                 }, 1000);
               }
