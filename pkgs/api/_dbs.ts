@@ -10,7 +10,7 @@ export const _ = {
   async api() {
     const ctx = apiContext(this);
     const { req, res } = ctx;
-    if (typeof g.db !== "undefined") {
+    if (typeof g.db !== "undefined" && g.db !== null) {
       if (req.params._ === "check") {
         return { mode: "encrypted" };
       }
@@ -30,6 +30,9 @@ export const _ = {
         res.sendStatus(500);
         res.send('{status: "unauthorized"}');
       }
+    } else {
+      res.status(503);
+      res.send('{"status": "database_unavailable", "message": "Database connection not available"}');
     }
   },
 };

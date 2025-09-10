@@ -65,8 +65,10 @@ await createLogger();
 if (g.db) {
   try {
     await g.db.$connect();
+    g.log.info("Database connected successfully");
   } catch (e) {
-    console.error(e);
+    g.log.error("Failed to connect to database:", e);
+    g.db = null;
   }
 }
 

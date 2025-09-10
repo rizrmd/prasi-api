@@ -13,6 +13,10 @@ export type DBArg = {
 };
 
 export const execQuery = async (args: DBArg, prisma: any) => {
+  if (!prisma) {
+    throw new Error("Database connection not available");
+  }
+  
   const { table, action, params } = args;
 
   if (action === "batch_upsert") {

@@ -28,7 +28,8 @@ export const preparePrisma = async () => {
         }) as Upsert,
       };
     } catch (e) {
-      console.log("Prisma not initialized", e);
+      console.error("Failed to initialize Prisma:", e);
+      g.db = null;
     }
   }
 
