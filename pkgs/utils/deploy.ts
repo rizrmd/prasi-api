@@ -479,9 +479,15 @@ export const deploy = {
       // No compression, return data as-is
       return compressedData;
     } else if (compressionMethod === 8) {
-      // DEFLATE compression - decompress using gunzipAsync
+      // DEFLATE compression - decompress using inflateRaw (for ZIP format)
       try {
-        const decompressed = await gunzipAsync(compressedData);
+        const { inflateRaw } = await import('zlib');
+        const decompressed = await new Promise<Buffer>((resolve, reject) => {
+          inflateRaw(compressedData, (err, result) => {
+            if (err) reject(err);
+            else resolve(result);
+          });
+        });
         return new Uint8Array(decompressed);
       } catch (error) {
         console.warn(`[WARN] Failed to decompress ${entry.filename} with method ${compressionMethod}:`, error.message);
