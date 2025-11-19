@@ -339,10 +339,14 @@ export const deploy = {
       console.log(`[DEBUG] ZIP processing completed: ${loadedFiles} files loaded`);
 
       if (!foundMetadata) {
-        console.log(`[DEBUG] Available files in ZIP:`);
+        console.log(`[DEBUG] Available files in ZIP (${zipEntries.length} total entries):`);
         for (const entry of zipEntries) {
-          console.log(`[DEBUG]  - ${entry.filename}`);
+          console.log(`[DEBUG]  - ${entry.filename} (size: ${entry.uncompressedSize} bytes)`);
         }
+        // Let's also try to find any JSON files
+        const jsonFiles = zipEntries.filter(entry => entry.filename.endsWith('.json'));
+        console.log(`[DEBUG] JSON files found: ${jsonFiles.length}`);
+        jsonFiles.forEach(entry => console.log(`[DEBUG]  - ${entry.filename}`));
         throw new Error("metadata.json not found in ZIP file");
       }
 
