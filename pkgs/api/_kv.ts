@@ -1,7 +1,7 @@
-import { BunSqliteKeyValue } from "pkgs/utils/kv";
+import { BunSqliteKeyValue } from "../utils/kv";
 import { apiContext } from "service-srv";
-import { dir } from "utils/dir";
-import { g } from "utils/global";
+import { dir } from "../utils/dir";
+import { g } from "../utils/global";
 
 export const _ = {
   url: "/_kv",
