@@ -3,6 +3,7 @@ import {
   exists,
   existsAsync,
   read,
+  readdirAsync,
   removeAsync,
   writeAsync,
 } from "fs-jetpack";
@@ -12,6 +13,7 @@ import { startBrCompress } from "./br-load";
 import { dir } from "./dir";
 import { g } from "./global";
 import { gunzipAsync } from "./gzip";
+import * as unzipper from "unzipper";
 
 const decoder = new TextDecoder();
 
@@ -49,7 +51,16 @@ export const deploy = {
     console.log(`Loading site: ${this.config.site_id} ${ts}`);
 
     try {
+      // Check if we have a new ZIP format deployment
+      if (await Bun.file(`app/web/deploy/${ts}.zip`).exists()) {
+        console.log(`Loading ZIP deployment: ${ts}.zip`);
+        await this.loadFromZip(ts);
+        return;
+      }
+
+      // Fallback to old msgpack/gzip format for backward compatibility
       if (await Bun.file(`app/web/deploy/${ts}.mpack`).exists()) {
+        console.log(`Loading legacy msgpack deployment: ${ts}.gz`);
         g.deploy.content = decode(
           await gunzipAsync(
             new Uint8Array(
@@ -57,7 +68,8 @@ export const deploy = {
             )
           )
         );
-      } else {
+      } else if (await Bun.file(`app/web/deploy/${ts}.gz`).exists()) {
+        console.log(`Loading legacy JSON deployment: ${ts}.gz`);
         g.deploy.content = JSON.parse(
           decoder.decode(
             new Uint8Array(
@@ -69,6 +81,8 @@ export const deploy = {
             )
           )
         );
+      } else {
+        throw new Error(`No deployment file found for timestamp: ${ts}`);
       }
 
       if (g.deploy.content) {
@@ -168,10 +182,10 @@ export const deploy = {
       }
 
       console.log(
-        `Downloading site deploy: ${this.config.site_id} [ts: ${this.config.deploy.ts}] ${base_url}`
+        `Downloading site deploy ZIP: ${this.config.site_id} [ts: ${this.config.deploy.ts}] ${base_url}`
       );
       const res = await fetch(
-        `${base_url}/prod-zip/${this.config.site_id}?ts=${Date.now()}&msgpack=1`
+        `${base_url}/prod-zip/${this.config.site_id}?ts=${Date.now()}`
       );
       buf = await res.arrayBuffer();
     } else {
@@ -184,12 +198,117 @@ export const deploy = {
       return;
     }
     const ts = Date.now();
-    const file = Bun.file(dir(`app/web/deploy/${ts}.gz`));
+    const file = Bun.file(dir(`app/web/deploy/${ts}.zip`));
     await Bun.write(file, buf);
-    await Bun.write(dir(`app/web/deploy/${ts}.mpack`), "ok");
+    await Bun.write(dir(`app/web/deploy/${ts}.info`), JSON.stringify({
+      format: "zip",
+      timestamp: ts,
+      site_id: this.config.site_id
+    }, null, 2));
     this.config.deploy.ts = ts + "";
 
     await this.saveConfig();
+  },
+  async loadFromZip(ts: string) {
+    try {
+      const zipFile = Bun.file(dir(`app/web/deploy/${ts}.zip`));
+      const zipBuffer = Buffer.from(await zipFile.arrayBuffer());
+
+      // Create a directory for extraction
+      const extractDir = dir(`app/web/deploy/${ts}_extracted`);
+      await dirAsync(extractDir);
+
+      // Extract ZIP file
+      const directory = await unzipper.Open.buffer(zipBuffer);
+      await directory.extract({ path: extractDir });
+
+      // Load metadata from ZIP
+      const metadataPath = dir(`${extractDir}/metadata.json`);
+      if (await Bun.file(metadataPath).exists()) {
+        const metadataContent = await Bun.file(metadataPath).text();
+        const metadata = JSON.parse(metadataContent);
+
+        // Set up the deploy content structure
+        g.deploy.content = {
+          layouts: metadata.layouts || [],
+          pages: metadata.pages || [],
+          comps: metadata.components || [],
+          site: metadata.site,
+          public: {},
+          code: {
+            server: {},
+            site: {},
+            core: {},
+          },
+        };
+
+        // Load public files
+        const publicDir = dir(`${extractDir}/public`);
+        if (await existsAsync(publicDir)) {
+          await this.loadFilesFromDirectory(publicDir, "public", g.deploy.content.public);
+        }
+
+        // Load server files
+        const serverDir = dir(`${extractDir}/server`);
+        if (await existsAsync(serverDir)) {
+          await this.loadFilesFromDirectory(serverDir, "server", g.deploy.content.code.server);
+        }
+
+        // Load site files
+        const siteDir = dir(`${extractDir}/site`);
+        if (await existsAsync(siteDir)) {
+          await this.loadFilesFromDirectory(siteDir, "site", g.deploy.content.code.site);
+        }
+
+        // Load core files
+        const coreDir = dir(`${extractDir}/core`);
+        if (await existsAsync(coreDir)) {
+          await this.loadFilesFromDirectory(coreDir, "core", g.deploy.content.code.core);
+        }
+
+        console.log(`Successfully loaded ZIP deployment with metadata`);
+      } else {
+        throw new Error("metadata.json not found in ZIP file");
+      }
+
+      // Clean up extracted directory
+      await removeAsync(extractDir);
+    } catch (error) {
+      console.error("Failed to load ZIP deployment:", error);
+      throw error;
+    }
+  },
+  async loadFilesFromDirectory(dirPath: string, prefix: string, target: Record<string, any>) {
+    const files = await readdirAsync(dirPath);
+
+    for (const file of files) {
+      const fullPath = dir(`${dirPath}/${file}`);
+      const stat = await Bun.file(fullPath).stat();
+
+      if (stat.isDirectory) {
+        // Recursively load subdirectories
+        await this.loadFilesFromDirectory(fullPath, `${prefix}/${file}`, target);
+      } else {
+        // Load file content
+        const content = await Bun.file(fullPath).arrayBuffer();
+
+        // Calculate relative path from the prefix
+        const relativePath = file;
+
+        // Determine if it's binary or text based on file extension
+        const binaryExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.ico', '.svg', '.woff', '.woff2', '.ttf', '.eot', '.js', '.css', '.map'];
+        const isBinary = binaryExtensions.some(ext => file.toLowerCase().endsWith(ext));
+
+        // Build the full path relative to the target structure
+        const targetPath = prefix === '' ? relativePath : `${prefix}/${relativePath}`;
+
+        if (isBinary) {
+          target[targetPath] = new Uint8Array(content);
+        } else {
+          target[targetPath] = new TextDecoder().decode(content);
+        }
+      }
+    }
   },
   get config() {
     if (!g.deploy) {
@@ -227,9 +346,10 @@ export const deploy = {
   },
   has_gz() {
     if (this.config.deploy.ts) {
-      return Bun.file(
-        dir(`app/web/deploy/${this.config.deploy.ts}.gz`)
-      ).exists();
+      return (
+        Bun.file(dir(`app/web/deploy/${this.config.deploy.ts}.zip`)).exists() ||
+        Bun.file(dir(`app/web/deploy/${this.config.deploy.ts}.gz`)).exists()
+      );
     }
 
     return false;
