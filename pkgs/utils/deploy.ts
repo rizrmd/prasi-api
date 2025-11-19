@@ -450,15 +450,28 @@ export const deploy = {
     // Extract compressed data
     const compressedData = buffer.slice(dataOffset, dataOffset + entry.compressedSize);
 
-    // Check compression method (0 = no compression)
+    // Check compression method (0 = no compression, 8 = DEFLATE)
     const compressionMethod = localHeaderView.getUint16(8, true);
     if (compressionMethod === 0) {
       // No compression, return data as-is
       return compressedData;
+    } else if (compressionMethod === 8) {
+      // DEFLATE compression - decompress using Bun
+      try {
+        const decompressed = Bun.decompress(compressedData);
+        if (decompressed) {
+          return new Uint8Array(decompressed);
+        } else {
+          console.warn(`[WARN] Failed to decompress ${entry.filename} with method ${compressionMethod}`);
+          return compressedData;
+        }
+      } catch (error) {
+        console.warn(`[WARN] Failed to decompress ${entry.filename} with method ${compressionMethod}:`, error.message);
+        return compressedData;
+      }
     } else {
-      // For simplicity, we'll just return the compressed data
-      // In a full implementation, you'd handle different compression methods
-      console.warn(`[WARN] Compressed file ${entry.filename} with method ${compressionMethod} not fully decompressed`);
+      // Other compression methods not supported
+      console.warn(`[WARN] Compressed file ${entry.filename} with unsupported method ${compressionMethod}`);
       return compressedData;
     }
   },
