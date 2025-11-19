@@ -3,10 +3,10 @@ import {
   exists,
   existsAsync,
   read,
-  readdirAsync,
   removeAsync,
   writeAsync,
 } from "fs-jetpack";
+import { readdir } from "fs/promises";
 import { decode } from "msgpackr";
 import { createRouter } from "radix3";
 import { startBrCompress } from "./br-load";
@@ -279,7 +279,7 @@ export const deploy = {
     }
   },
   async loadFilesFromDirectory(dirPath: string, prefix: string, target: Record<string, any>) {
-    const files = await readdirAsync(dirPath);
+    const files = await readdir(dirPath);
 
     for (const file of files) {
       const fullPath = dir(`${dirPath}/${file}`);
