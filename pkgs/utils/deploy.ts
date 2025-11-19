@@ -479,15 +479,10 @@ export const deploy = {
       // No compression, return data as-is
       return compressedData;
     } else if (compressionMethod === 8) {
-      // DEFLATE compression - decompress using Bun
+      // DEFLATE compression - decompress using gunzipAsync
       try {
-        const decompressed = Bun.gunzip(compressedData);
-        if (decompressed) {
-          return new Uint8Array(decompressed);
-        } else {
-          console.warn(`[WARN] Failed to decompress ${entry.filename} with method ${compressionMethod}`);
-          return compressedData;
-        }
+        const decompressed = await gunzipAsync(compressedData);
+        return new Uint8Array(decompressed);
       } catch (error) {
         console.warn(`[WARN] Failed to decompress ${entry.filename} with method ${compressionMethod}:`, error.message);
         return compressedData;
