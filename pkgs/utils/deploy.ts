@@ -260,19 +260,21 @@ export const deploy = {
       let loadedFiles = 0;
 
       // Process each entry in the ZIP
+      console.log(`[DEBUG] Processing ${zipEntries.length} ZIP entries...`);
       for (const entry of zipEntries) {
         if (entry.filename.endsWith('/')) {
-          // Skip directory entries
+          console.log(`[DEBUG] Skipping directory: ${entry.filename}`);
           continue;
         }
 
         try {
-          console.log(`[DEBUG] Processing file: ${entry.filename} (${entry.compressedSize} -> ${entry.uncompressedSize} bytes)`);
+          console.log(`[DEBUG] Processing file: "${entry.filename}" (${entry.compressedSize} -> ${entry.uncompressedSize} bytes)`);
 
           // Extract file data from ZIP buffer
           const fileContent = await this.extractFileFromZip(zipBuffer, entry);
 
           if (entry.filename === 'metadata.json') {
+            console.log(`[DEBUG] ✓ Found metadata.json entry!`);
             console.log(`[DEBUG] Found metadata.json, parsing content...`);
             console.log(`[DEBUG] metadata.json file size: ${fileContent.length} bytes`);
 
