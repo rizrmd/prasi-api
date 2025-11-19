@@ -409,12 +409,11 @@ export const deploy = {
       const fileNameBytes = new Uint8Array(buffer.buffer, centralDirOffset + centralDirPos + 46, fileNameLength);
       const filename = new TextDecoder().decode(fileNameBytes);
 
-      // Get file size info from local header
-      const localHeaderView = new DataView(buffer.buffer, localHeaderOffset, 30);
-      const compressedSize = localHeaderView.getUint32(18, true);
-      const uncompressedSize = localHeaderView.getUint32(22, true);
-      const fileNameLength2 = localHeaderView.getUint16(26, true);
-      const extraFieldLength2 = localHeaderView.getUint16(28, true);
+      // Get file size info from central directory (more reliable than local header)
+      const compressedSize = centralDirView.getUint32(centralDirPos + 20, true);
+      const uncompressedSize = centralDirView.getUint32(centralDirPos + 24, true);
+      const fileNameLength2 = centralDirView.getUint16(centralDirPos + 28, true);
+      const extraFieldLength2 = centralDirView.getUint16(centralDirPos + 30, true);
 
       entries.push({
         filename,
