@@ -274,31 +274,40 @@ export const deploy = {
 
           if (entry.filename === 'metadata.json') {
             console.log(`[DEBUG] Found metadata.json, parsing content...`);
+            console.log(`[DEBUG] metadata.json file size: ${fileContent.length} bytes`);
+
             const metadataStr = new TextDecoder().decode(fileContent);
+            console.log(`[DEBUG] metadata.json decoded to string, length: ${metadataStr.length}`);
+            console.log(`[DEBUG] metadata.json preview:`, metadataStr.substring(0, 100));
+
             let metadata;
 
             try {
               metadata = JSON.parse(metadataStr);
               console.log(`[DEBUG] Successfully parsed metadata.json`);
+              console.log(`[DEBUG] foundMetadata flag before setting: ${foundMetadata}`);
+
+              // Update deploy content with metadata
+              g.deploy.content.layouts = metadata.layouts || [];
+              g.deploy.content.pages = metadata.pages || [];
+              g.deploy.content.comps = metadata.components || [];
+              g.deploy.content.site = metadata.site;
+
+              foundMetadata = true;
+              console.log(`[DEBUG] foundMetadata flag after setting: ${foundMetadata}`);
+
+              console.log(`[DEBUG] Parsed metadata:`, {
+                layouts: metadata.layouts?.length || 0,
+                pages: metadata.pages?.length || 0,
+                components: metadata.components?.length || 0,
+                hasSite: !!metadata.site
+              });
+
             } catch (jsonError) {
               console.error(`[ERROR] Failed to parse metadata.json: ${jsonError.message}`);
               console.error(`[ERROR] JSON content preview:`, metadataStr.substring(0, 200));
               throw new Error(`Invalid JSON in metadata.json: ${jsonError.message}`);
             }
-
-            console.log(`[DEBUG] Parsed metadata:`, {
-              layouts: metadata.layouts?.length || 0,
-              pages: metadata.pages?.length || 0,
-              components: metadata.components?.length || 0,
-              hasSite: !!metadata.site
-            });
-
-            // Update deploy content with metadata
-            g.deploy.content.layouts = metadata.layouts || [];
-            g.deploy.content.pages = metadata.pages || [];
-            g.deploy.content.comps = metadata.components || [];
-            g.deploy.content.site = metadata.site;
-            foundMetadata = true;
           } else if (entry.filename.startsWith('public/')) {
             const relativePath = entry.filename.slice(7); // Remove 'public/' prefix
             const binaryExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.ico', '.svg', '.woff', '.woff2', '.ttf', '.eot', '.js', '.css', '.map'];
@@ -348,6 +357,7 @@ export const deploy = {
       }
 
       console.log(`[DEBUG] ZIP processing completed: ${loadedFiles} files loaded`);
+      console.log(`[DEBUG] Final foundMetadata state: ${foundMetadata}`);
 
       if (!foundMetadata) {
         console.log(`[DEBUG] Available files in ZIP (${zipEntries.length} total entries):`);
