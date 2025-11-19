@@ -89,17 +89,19 @@ export const deploy = {
         throw new Error(`No deployment file found for timestamp: ${ts}`);
       }
 
+      // Initialize cache early to prevent undefined access errors
+      console.log(`[DEBUG] Setting up cache and compression...`);
+      g.cache = {
+        br: {},
+        gz: {},
+        br_progress: {
+          pending: {},
+          running: false,
+          timeout: null,
+        },
+      };
+
       if (g.deploy.content) {
-        console.log(`[DEBUG] Setting up cache and compression...`);
-        g.cache = {
-          br: {},
-          gz: {},
-          br_progress: {
-            pending: {},
-            running: false,
-            timeout: null,
-          },
-        };
         startBrCompress();
         console.log(`[DEBUG] Compression started`);
 
@@ -273,7 +275,16 @@ export const deploy = {
           if (entry.filename === 'metadata.json') {
             console.log(`[DEBUG] Found metadata.json, parsing content...`);
             const metadataStr = new TextDecoder().decode(fileContent);
-            const metadata = JSON.parse(metadataStr);
+            let metadata;
+
+            try {
+              metadata = JSON.parse(metadataStr);
+              console.log(`[DEBUG] Successfully parsed metadata.json`);
+            } catch (jsonError) {
+              console.error(`[ERROR] Failed to parse metadata.json: ${jsonError.message}`);
+              console.error(`[ERROR] JSON content preview:`, metadataStr.substring(0, 200));
+              throw new Error(`Invalid JSON in metadata.json: ${jsonError.message}`);
+            }
 
             console.log(`[DEBUG] Parsed metadata:`, {
               layouts: metadata.layouts?.length || 0,
