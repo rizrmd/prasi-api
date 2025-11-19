@@ -6,14 +6,12 @@ import {
   removeAsync,
   writeAsync,
 } from "fs-jetpack";
-import { readdir } from "fs/promises";
 import { decode } from "msgpackr";
 import { createRouter } from "radix3";
 import { startBrCompress } from "./br-load";
 import { dir } from "./dir";
 import { g } from "./global";
 import { gunzipAsync } from "./gzip";
-import * as unzipper from "unzipper";
 
 const decoder = new TextDecoder();
 
@@ -224,134 +222,136 @@ export const deploy = {
       }
 
       console.log(`[DEBUG] ZIP file exists, size: ${await zipFile.size} bytes`);
-      const zipBuffer = Buffer.from(await zipFile.arrayBuffer());
 
-      // Create a directory for extraction
-      const extractDir = dir(`app/web/deploy/${ts}_extracted`);
-      console.log(`[DEBUG] Creating extract directory: ${extractDir}`);
-      await dirAsync(extractDir);
+      // Use Bun's built-in ZIP reading capability
+      console.log(`[DEBUG] Reading ZIP entries...`);
+      const zipEntries = await zipFile.entries();
+      console.log(`[DEBUG] ZIP entries loaded: ${zipEntries.length} entries`);
 
-      // Extract ZIP file
-      console.log(`[DEBUG] Starting ZIP extraction...`);
-      const directory = await unzipper.Open.buffer(zipBuffer);
-      console.log(`[DEBUG] ZIP opened, files count: ${directory.files.length}`);
+      // Create deploy content structure
+      g.deploy.content = {
+        layouts: [],
+        pages: [],
+        comps: [],
+        site: null,
+        public: {},
+        code: {
+          server: {},
+          site: {},
+          core: {},
+        },
+      };
 
-      await directory.extract({ path: extractDir });
-      console.log(`[DEBUG] ZIP extraction completed`);
+      let foundMetadata = false;
+      let loadedFiles = 0;
 
-      // Load metadata from ZIP
-      const metadataPath = dir(`${extractDir}/metadata.json`);
-      console.log(`[DEBUG] Looking for metadata at: ${metadataPath}`);
+      // Process each entry in the ZIP
+      for (const entry of zipEntries) {
+        const path = entry[0];
+        const zipEntry = entry[1];
 
-      if (await Bun.file(metadataPath).exists()) {
-        console.log(`[DEBUG] Found metadata.json, reading content...`);
-        const metadataContent = await Bun.file(metadataPath).text();
-        console.log(`[DEBUG] Metadata content length: ${metadataContent.length} chars`);
-        const metadata = JSON.parse(metadataContent);
-
-        console.log(`[DEBUG] Parsed metadata:`, {
-          layouts: metadata.layouts?.length || 0,
-          pages: metadata.pages?.length || 0,
-          components: metadata.components?.length || 0,
-          hasSite: !!metadata.site
-        });
-
-        // Set up the deploy content structure
-        g.deploy.content = {
-          layouts: metadata.layouts || [],
-          pages: metadata.pages || [],
-          comps: metadata.components || [],
-          site: metadata.site,
-          public: {},
-          code: {
-            server: {},
-            site: {},
-            core: {},
-          },
-        };
-
-        // Load public files
-        const publicDir = dir(`${extractDir}/public`);
-        if (await existsAsync(publicDir)) {
-          console.log(`[DEBUG] Loading public files from: ${publicDir}`);
-          await this.loadFilesFromDirectory(publicDir, "public", g.deploy.content.public);
-          console.log(`[DEBUG] Loaded ${Object.keys(g.deploy.content.public).length} public files`);
+        if (path.endsWith('/')) {
+          // Skip directory entries
+          continue;
         }
 
-        // Load server files
-        const serverDir = dir(`${extractDir}/server`);
-        if (await existsAsync(serverDir)) {
-          console.log(`[DEBUG] Loading server files from: ${serverDir}`);
-          await this.loadFilesFromDirectory(serverDir, "server", g.deploy.content.code.server);
-          console.log(`[DEBUG] Loaded ${Object.keys(g.deploy.content.code.server).length} server files`);
-        }
+        try {
+          const content = await zipEntry.arrayBuffer();
+          const fileContent = new Uint8Array(content);
 
-        // Load site files
-        const siteDir = dir(`${extractDir}/site`);
-        if (await existsAsync(siteDir)) {
-          console.log(`[DEBUG] Loading site files from: ${siteDir}`);
-          await this.loadFilesFromDirectory(siteDir, "site", g.deploy.content.code.site);
-          console.log(`[DEBUG] Loaded ${Object.keys(g.deploy.content.code.site).length} site files`);
-        }
+          console.log(`[DEBUG] Processing file: ${path} (${fileContent.length} bytes)`);
 
-        // Load core files
-        const coreDir = dir(`${extractDir}/core`);
-        if (await existsAsync(coreDir)) {
-          console.log(`[DEBUG] Loading core files from: ${coreDir}`);
-          await this.loadFilesFromDirectory(coreDir, "core", g.deploy.content.code.core);
-          console.log(`[DEBUG] Loaded ${Object.keys(g.deploy.content.code.core).length} core files`);
-        }
+          if (path === 'metadata.json') {
+            console.log(`[DEBUG] Found metadata.json, parsing content...`);
+            const metadataStr = new TextDecoder().decode(fileContent);
+            const metadata = JSON.parse(metadataStr);
 
-        console.log(`[DEBUG] Successfully loaded ZIP deployment with metadata`);
-      } else {
-        // List available files in the ZIP
+            console.log(`[DEBUG] Parsed metadata:`, {
+              layouts: metadata.layouts?.length || 0,
+              pages: metadata.pages?.length || 0,
+              components: metadata.components?.length || 0,
+              hasSite: !!metadata.site
+            });
+
+            // Update deploy content with metadata
+            g.deploy.content.layouts = metadata.layouts || [];
+            g.deploy.content.pages = metadata.pages || [];
+            g.deploy.content.comps = metadata.components || [];
+            g.deploy.content.site = metadata.site;
+            foundMetadata = true;
+          } else if (path.startsWith('public/')) {
+            const relativePath = path.slice(7); // Remove 'public/' prefix
+            const binaryExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.ico', '.svg', '.woff', '.woff2', '.ttf', '.eot', '.js', '.css', '.map'];
+            const isBinary = binaryExtensions.some(ext => relativePath.toLowerCase().endsWith(ext));
+
+            if (isBinary) {
+              g.deploy.content.public[relativePath] = fileContent;
+            } else {
+              g.deploy.content.public[relativePath] = new TextDecoder().decode(fileContent);
+            }
+          } else if (path.startsWith('server/')) {
+            const relativePath = path.slice(7); // Remove 'server/' prefix
+            const binaryExtensions = ['.js', '.map', '.json'];
+            const isBinary = binaryExtensions.some(ext => relativePath.toLowerCase().endsWith(ext));
+
+            if (isBinary) {
+              g.deploy.content.code.server[relativePath] = fileContent;
+            } else {
+              g.deploy.content.code.server[relativePath] = new TextDecoder().decode(fileContent);
+            }
+          } else if (path.startsWith('site/')) {
+            const relativePath = path.slice(5); // Remove 'site/' prefix
+            const binaryExtensions = ['.js', '.css', '.map', '.json', '.woff', '.woff2', '.ttf'];
+            const isBinary = binaryExtensions.some(ext => relativePath.toLowerCase().endsWith(ext));
+
+            if (isBinary) {
+              g.deploy.content.code.site[relativePath] = fileContent;
+            } else {
+              g.deploy.content.code.site[relativePath] = new TextDecoder().decode(fileContent);
+            }
+          } else if (path.startsWith('core/')) {
+            const relativePath = path.slice(6); // Remove 'core/' prefix
+            const binaryExtensions = ['.js', '.json'];
+            const isBinary = binaryExtensions.some(ext => relativePath.toLowerCase().endsWith(ext));
+
+            if (isBinary) {
+              g.deploy.content.code.core[relativePath] = fileContent;
+            } else {
+              g.deploy.content.code.core[relativePath] = new TextDecoder().decode(fileContent);
+            }
+          }
+
+          loadedFiles++;
+        } catch (fileError) {
+          console.warn(`[WARN] Failed to process file ${path}:`, fileError.message);
+        }
+      }
+
+      console.log(`[DEBUG] ZIP processing completed: ${loadedFiles} files loaded`);
+
+      if (!foundMetadata) {
         console.log(`[DEBUG] Available files in ZIP:`);
-        directory.files.forEach((file) => {
-          console.log(`[DEBUG]  - ${file.path}`);
-        });
+        for (const entry of zipEntries) {
+          console.log(`[DEBUG]  - ${entry[0]}`);
+        }
         throw new Error("metadata.json not found in ZIP file");
       }
 
-      // Clean up extracted directory
-      console.log(`[DEBUG] Cleaning up extract directory...`);
-      await removeAsync(extractDir);
-      console.log(`[DEBUG] ZIP load completed successfully`);
+      console.log(`[DEBUG] Successfully loaded ZIP deployment`);
+      console.log(`[DEBUG] Final content summary:`, {
+        layouts: g.deploy.content.layouts?.length || 0,
+        pages: g.deploy.content.pages?.length || 0,
+        comps: g.deploy.content.comps?.length || 0,
+        publicFiles: Object.keys(g.deploy.content.public).length,
+        serverFiles: Object.keys(g.deploy.content.code.server).length,
+        siteFiles: Object.keys(g.deploy.content.code.site).length,
+        coreFiles: Object.keys(g.deploy.content.code.core).length,
+      });
+
     } catch (error) {
       console.error("[ERROR] Failed to load ZIP deployment:", error);
       console.error("[ERROR] Stack trace:", error.stack);
       throw error;
-    }
-  },
-  async loadFilesFromDirectory(dirPath: string, prefix: string, target: Record<string, any>) {
-    const files = await readdir(dirPath);
-
-    for (const file of files) {
-      const fullPath = dir(`${dirPath}/${file}`);
-      const stat = await Bun.file(fullPath).stat();
-
-      if (stat.isDirectory) {
-        // Recursively load subdirectories
-        await this.loadFilesFromDirectory(fullPath, `${prefix}/${file}`, target);
-      } else {
-        // Load file content
-        const content = await Bun.file(fullPath).arrayBuffer();
-
-        // Calculate relative path from the prefix
-        const relativePath = file;
-
-        // Determine if it's binary or text based on file extension
-        const binaryExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.ico', '.svg', '.woff', '.woff2', '.ttf', '.eot', '.js', '.css', '.map'];
-        const isBinary = binaryExtensions.some(ext => file.toLowerCase().endsWith(ext));
-
-        // Build the full path relative to the target structure
-        const targetPath = prefix === '' ? relativePath : `${prefix}/${relativePath}`;
-
-        if (isBinary) {
-          target[targetPath] = new Uint8Array(content);
-        } else {
-          target[targetPath] = new TextDecoder().decode(content);
-        }
-      }
     }
   },
   get config() {
