@@ -48,19 +48,16 @@ export const deploy = {
     await this.load(this.config.deploy.ts);
   },
   async load(ts: string) {
-    console.log(`Loading site: ${this.config.site_id} ${ts}`);
+    console.log(`[DEBUG] Loading site: ${this.config.site_id} ${ts}`);
 
     try {
       // Check if we have a new ZIP format deployment
       if (await Bun.file(`app/web/deploy/${ts}.zip`).exists()) {
-        console.log(`Loading ZIP deployment: ${ts}.zip`);
+        console.log(`[DEBUG] Found ZIP deployment, loading: ${ts}.zip`);
         await this.loadFromZip(ts);
-        return;
-      }
-
-      // Fallback to old msgpack/gzip format for backward compatibility
-      if (await Bun.file(`app/web/deploy/${ts}.mpack`).exists()) {
-        console.log(`Loading legacy msgpack deployment: ${ts}.gz`);
+        console.log(`[DEBUG] ZIP load completed, proceeding with content setup`);
+      } else if (await Bun.file(`app/web/deploy/${ts}.mpack`).exists()) {
+        console.log(`[DEBUG] Loading legacy msgpack deployment: ${ts}.gz`);
         g.deploy.content = decode(
           await gunzipAsync(
             new Uint8Array(
@@ -69,7 +66,7 @@ export const deploy = {
           )
         );
       } else if (await Bun.file(`app/web/deploy/${ts}.gz`).exists()) {
-        console.log(`Loading legacy JSON deployment: ${ts}.gz`);
+        console.log(`[DEBUG] Loading legacy JSON deployment: ${ts}.gz`);
         g.deploy.content = JSON.parse(
           decoder.decode(
             new Uint8Array(
@@ -86,6 +83,7 @@ export const deploy = {
       }
 
       if (g.deploy.content) {
+        console.log(`[DEBUG] Setting up cache and compression...`);
         g.cache = {
           br: {},
           gz: {},
@@ -96,16 +94,20 @@ export const deploy = {
           },
         };
         startBrCompress();
+        console.log(`[DEBUG] Compression started`);
 
         if (exists(dir("public"))) {
           await removeAsync(dir("public"));
-          if (g.deploy.content.public) {
-            await dirAsync(dir("public"));
-            for (const [k, v] of Object.entries(g.deploy.content.public)) {
-              await writeAsync(dir(`public/${k}`), v);
-            }
+        }
+        if (g.deploy.content.public) {
+          console.log(`[DEBUG] Creating public directory and writing ${Object.keys(g.deploy.content.public).length} files`);
+          await dirAsync(dir("public"));
+          for (const [k, v] of Object.entries(g.deploy.content.public)) {
+            await writeAsync(dir(`public/${k}`), v);
           }
         }
+        console.log(`[DEBUG] Public files setup completed`);
+
         for (const page of g.deploy.content.layouts) {
           if (page.is_default_layout) {
             g.deploy.layout = page.content_tree;
@@ -122,11 +124,13 @@ export const deploy = {
           g.deploy.pages[page.id] = page;
           g.deploy.router.insert(page.url, page);
         }
+        console.log(`[DEBUG] Router and pages setup completed`);
 
         g.deploy.comps = {};
         for (const comp of g.deploy.content.comps) {
           g.deploy.comps[comp.id] = comp.content_tree;
         }
+        console.log(`[DEBUG] Components setup completed`);
 
         if (g.deploy.content.code.server) {
           setTimeout(async () => {
@@ -162,11 +166,12 @@ export const deploy = {
             }
           }, 300);
         }
+        console.log(`[DEBUG] Site load completed successfully!`);
       }
     } catch (e) {
-      console.log("Failed to load site", this.config.site_id);
-      if (e instanceof Error)
-        console.error(e.message, `[app/web/deploy/${ts}.gz]`);
+      console.log("[ERROR] Failed to load site", this.config.site_id);
+      console.error("[ERROR] Error details:", e.message);
+      console.error("[ERROR] Stack trace:", e.stack);
     }
   },
   async run(load_from?: string) {
@@ -211,22 +216,45 @@ export const deploy = {
   },
   async loadFromZip(ts: string) {
     try {
+      console.log(`[DEBUG] Starting ZIP load for timestamp: ${ts}`);
       const zipFile = Bun.file(dir(`app/web/deploy/${ts}.zip`));
+
+      if (!await zipFile.exists()) {
+        throw new Error(`ZIP file not found: ${zipFile.path}`);
+      }
+
+      console.log(`[DEBUG] ZIP file exists, size: ${await zipFile.size} bytes`);
       const zipBuffer = Buffer.from(await zipFile.arrayBuffer());
 
       // Create a directory for extraction
       const extractDir = dir(`app/web/deploy/${ts}_extracted`);
+      console.log(`[DEBUG] Creating extract directory: ${extractDir}`);
       await dirAsync(extractDir);
 
       // Extract ZIP file
+      console.log(`[DEBUG] Starting ZIP extraction...`);
       const directory = await unzipper.Open.buffer(zipBuffer);
+      console.log(`[DEBUG] ZIP opened, files count: ${directory.files.length}`);
+
       await directory.extract({ path: extractDir });
+      console.log(`[DEBUG] ZIP extraction completed`);
 
       // Load metadata from ZIP
       const metadataPath = dir(`${extractDir}/metadata.json`);
+      console.log(`[DEBUG] Looking for metadata at: ${metadataPath}`);
+
       if (await Bun.file(metadataPath).exists()) {
+        console.log(`[DEBUG] Found metadata.json, reading content...`);
         const metadataContent = await Bun.file(metadataPath).text();
+        console.log(`[DEBUG] Metadata content length: ${metadataContent.length} chars`);
         const metadata = JSON.parse(metadataContent);
+
+        console.log(`[DEBUG] Parsed metadata:`, {
+          layouts: metadata.layouts?.length || 0,
+          pages: metadata.pages?.length || 0,
+          components: metadata.components?.length || 0,
+          hasSite: !!metadata.site
+        });
 
         // Set up the deploy content structure
         g.deploy.content = {
@@ -245,36 +273,52 @@ export const deploy = {
         // Load public files
         const publicDir = dir(`${extractDir}/public`);
         if (await existsAsync(publicDir)) {
+          console.log(`[DEBUG] Loading public files from: ${publicDir}`);
           await this.loadFilesFromDirectory(publicDir, "public", g.deploy.content.public);
+          console.log(`[DEBUG] Loaded ${Object.keys(g.deploy.content.public).length} public files`);
         }
 
         // Load server files
         const serverDir = dir(`${extractDir}/server`);
         if (await existsAsync(serverDir)) {
+          console.log(`[DEBUG] Loading server files from: ${serverDir}`);
           await this.loadFilesFromDirectory(serverDir, "server", g.deploy.content.code.server);
+          console.log(`[DEBUG] Loaded ${Object.keys(g.deploy.content.code.server).length} server files`);
         }
 
         // Load site files
         const siteDir = dir(`${extractDir}/site`);
         if (await existsAsync(siteDir)) {
+          console.log(`[DEBUG] Loading site files from: ${siteDir}`);
           await this.loadFilesFromDirectory(siteDir, "site", g.deploy.content.code.site);
+          console.log(`[DEBUG] Loaded ${Object.keys(g.deploy.content.code.site).length} site files`);
         }
 
         // Load core files
         const coreDir = dir(`${extractDir}/core`);
         if (await existsAsync(coreDir)) {
+          console.log(`[DEBUG] Loading core files from: ${coreDir}`);
           await this.loadFilesFromDirectory(coreDir, "core", g.deploy.content.code.core);
+          console.log(`[DEBUG] Loaded ${Object.keys(g.deploy.content.code.core).length} core files`);
         }
 
-        console.log(`Successfully loaded ZIP deployment with metadata`);
+        console.log(`[DEBUG] Successfully loaded ZIP deployment with metadata`);
       } else {
+        // List available files in the ZIP
+        console.log(`[DEBUG] Available files in ZIP:`);
+        directory.files.forEach((file) => {
+          console.log(`[DEBUG]  - ${file.path}`);
+        });
         throw new Error("metadata.json not found in ZIP file");
       }
 
       // Clean up extracted directory
+      console.log(`[DEBUG] Cleaning up extract directory...`);
       await removeAsync(extractDir);
+      console.log(`[DEBUG] ZIP load completed successfully`);
     } catch (error) {
-      console.error("Failed to load ZIP deployment:", error);
+      console.error("[ERROR] Failed to load ZIP deployment:", error);
+      console.error("[ERROR] Stack trace:", error.stack);
       throw error;
     }
   },
