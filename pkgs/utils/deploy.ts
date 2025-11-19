@@ -481,7 +481,7 @@ export const deploy = {
     } else if (compressionMethod === 8) {
       // DEFLATE compression - decompress using Bun
       try {
-        const decompressed = Bun.decompress(compressedData);
+        const decompressed = Bun.gunzip(compressedData);
         if (decompressed) {
           return new Uint8Array(decompressed);
         } else {
