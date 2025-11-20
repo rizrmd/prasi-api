@@ -289,6 +289,9 @@ export const deploy = {
               console.log(`[DEBUG] Successfully parsed metadata.json`);
               console.log(`[DEBUG] foundMetadata flag before setting: ${foundMetadata}`);
 
+              // Detect metadata inflation and identify problematic items
+              this.detectMetadataInflation(metadata);
+
               // Update deploy content with metadata
               g.deploy.content.layouts = metadata.layouts || [];
               g.deploy.content.pages = metadata.pages || [];
@@ -350,6 +353,13 @@ export const deploy = {
             } else {
               g.deploy.content.code.core[relativePath] = new TextDecoder().decode(fileContent);
             }
+          } else if (entry.filename.startsWith('content/')) {
+            // Store content tree files for later processing
+            if (!g.deploy.content._contentTrees) {
+              g.deploy.content._contentTrees = {};
+            }
+            g.deploy.content._contentTrees[entry.filename] = new TextDecoder().decode(fileContent);
+            console.log(`[DEBUG] Loaded content tree file: ${entry.filename} (${fileContent.length} bytes)`);
           }
 
           loadedFiles++;
@@ -360,6 +370,12 @@ export const deploy = {
 
       console.log(`[DEBUG] ZIP processing completed: ${loadedFiles} files loaded`);
       console.log(`[DEBUG] Final foundMetadata state: ${foundMetadata}`);
+
+      // Restore content_tree data from separate files if optimization was applied
+      if (g.deploy.content._contentTrees && Object.keys(g.deploy.content._contentTrees).length > 0) {
+        console.log(`[DEBUG] Restoring content_tree data from separate files...`);
+        this.restoreContentTrees(g.deploy.content);
+      }
 
       if (!foundMetadata) {
         console.log(`[DEBUG] Available files in ZIP (${zipEntries.length} total entries):`);
@@ -533,6 +549,142 @@ export const deploy = {
       JSON.stringify(this.config, null, 2)
     );
   },
+  detectMetadataInflation(metadata: any) {
+    console.log(`[INFLATION] Starting metadata inflation analysis...`);
+
+    const analyzeItems = (items: any[], type: string) => {
+      if (!items || !Array.isArray(items)) return [];
+
+      const results = [];
+      let totalSize = 0;
+
+      for (const item of items) {
+        const itemSize = JSON.stringify(item).length;
+        totalSize += itemSize;
+
+        // Check if this item has content_tree and calculate its size
+        const contentTreeSize = item.content_tree ? JSON.stringify(item.content_tree).length : 0;
+
+        if (itemSize > 100000 || contentTreeSize > 50000) { // 100KB total or 50KB content_tree
+          results.push({
+            id: item.id || 'unknown',
+            name: item.name || 'unnamed',
+            url: item.url || '',
+            totalSize: itemSize,
+            contentTreeSize: contentTreeSize,
+            hasContentTree: !!item.content_tree,
+            type: type
+          });
+        }
+      }
+
+      console.log(`[INFLATION] ${type}: ${items.length} items, total ${(totalSize / 1024 / 1024).toFixed(2)}MB`);
+      return results;
+    };
+
+    // Analyze each type of content
+    const inflatedLayouts = analyzeItems(metadata.layouts || [], 'layout');
+    const inflatedPages = analyzeItems(metadata.pages || [], 'page');
+    const inflatedComponents = analyzeItems(metadata.components || [], 'component');
+
+    const allInflated = [...inflatedLayouts, ...inflatedPages, ...inflatedComponents];
+
+    if (allInflated.length > 0) {
+      console.log(`[INFLATION] ⚠️  Found ${allInflated.length} inflated items causing metadata bloat:`);
+
+      // Sort by size (largest first)
+      allInflated.sort((a, b) => b.totalSize - a.totalSize);
+
+      // Show top 10 biggest offenders
+      const topOffenders = allInflated.slice(0, 10);
+      for (const item of topOffenders) {
+        const sizeMB = (item.totalSize / 1024 / 1024).toFixed(2);
+        const contentTreeMB = (item.contentTreeSize / 1024 / 1024).toFixed(2);
+        const percentage = ((item.contentTreeSize / item.totalSize) * 100).toFixed(1);
+
+        console.log(`[INFLATION]   📊 ${item.type.toUpperCase()}: ${item.name || item.id}`);
+        console.log(`[INFLATION]      Size: ${sizeMB}MB total (${contentTreeMB}MB content_tree = ${percentage}%)`);
+        if (item.url) console.log(`[INFLATION]      URL: ${item.url}`);
+      }
+
+      // Summary statistics
+      const totalInflatedSize = allInflated.reduce((sum, item) => sum + item.totalSize, 0);
+      const totalContentTreeSize = allInflated.reduce((sum, item) => sum + item.contentTreeSize, 0);
+
+      console.log(`[INFLATION] 📈 Summary:`);
+      console.log(`[INFLATION]   Total inflated items: ${allInflated.length}/${metadata.pages?.length + metadata.components?.length + metadata.layouts?.length || 0}`);
+      console.log(`[INFLATION]   Total bloat: ${(totalInflatedSize / 1024 / 1024).toFixed(2)}MB`);
+      console.log(`[INFLATION]   Content-tree bloat: ${(totalContentTreeSize / 1024 / 1024).toFixed(2)}MB (${((totalContentTreeSize / totalInflatedSize) * 100).toFixed(1)}%)`);
+
+      if (metadata.optimization?.content_tree_removed) {
+        console.log(`[INFLATION] ✅ Optimization already applied: content_tree removed from metadata`);
+        console.log(`[INFLATION]    Original: ${metadata.optimization.original_pages || 0} pages, ${metadata.optimization.original_components || 0} components, ${metadata.optimization.original_layouts || 0} layouts`);
+        console.log(`[INFLATION]    Reason: ${metadata.optimization.reason}`);
+      } else {
+        console.log(`[INFLATION] ❌ No optimization detected - consider applying content_tree separation`);
+      }
+    } else {
+      console.log(`[INFLATION] ✅ No significant inflation detected`);
+    }
+
+    console.log(`[INFLATION] Analysis completed`);
+  },
+
+  restoreContentTrees(content: any) {
+    if (!content._contentTrees) return;
+
+    console.log(`[RESTORE] Restoring content_tree data from ${Object.keys(content._contentTrees).length} files...`);
+
+    try {
+      // Restore layout content trees
+      if (content._contentTrees['content/layout-content-trees.json']) {
+        const layoutTrees = JSON.parse(content._contentTrees['content/layout-content-trees.json']);
+        let restoredLayouts = 0;
+        for (const layout of content.layouts || []) {
+          if (layoutTrees[layout.id]) {
+            layout.content_tree = layoutTrees[layout.id];
+            restoredLayouts++;
+          }
+        }
+        console.log(`[RESTORE] ✓ Restored content_tree for ${restoredLayouts} layouts`);
+      }
+
+      // Restore page content trees
+      if (content._contentTrees['content/page-content-trees.json']) {
+        const pageTrees = JSON.parse(content._contentTrees['content/page-content-trees.json']);
+        let restoredPages = 0;
+        for (const page of content.pages || []) {
+          if (pageTrees[page.id]) {
+            page.content_tree = pageTrees[page.id];
+            restoredPages++;
+          }
+        }
+        console.log(`[RESTORE] ✓ Restored content_tree for ${restoredPages} pages`);
+      }
+
+      // Restore component content trees
+      if (content._contentTrees['content/component-content-trees.json']) {
+        const componentTrees = JSON.parse(content._contentTrees['content/component-content-trees.json']);
+        let restoredComponents = 0;
+        for (const component of content.comps || []) {
+          if (componentTrees[component.id]) {
+            component.content_tree = componentTrees[component.id];
+            restoredComponents++;
+          }
+        }
+        console.log(`[RESTORE] ✓ Restored content_tree for ${restoredComponents} components`);
+      }
+
+      // Clean up temporary storage
+      delete content._contentTrees;
+
+      console.log(`[RESTORE] ✅ Content tree restoration completed`);
+
+    } catch (error) {
+      console.error(`[RESTORE] ❌ Failed to restore content trees:`, error.message);
+    }
+  },
+
   has_gz() {
     if (this.config.deploy.ts) {
       return (
