@@ -81,10 +81,13 @@ export const createServer = async () => {
   await ensureNotRunning();
 
   console.log(`[DEBUG] Starting Bun.serve on port ${g.port}...`);
-  g.server = Bun.serve({
-    port: g.port,
-    maxRequestBodySize: 1024 * 1024 * 128,
-    async fetch(req) {
+
+  try {
+    g.server = Bun.serve({
+      port: g.port,
+      maxRequestBodySize: 1024 * 1024 * 128,
+      hostname: "0.0.0.0", // Explicitly bind to all interfaces
+      async fetch(req) {
       const url = new URL(req.url) as URL;
       url.pathname = url.pathname.replace(/\/+/g, "/");
 
@@ -183,10 +186,32 @@ export const createServer = async () => {
       }
 
       return handle(req);
-    },
-  });
+      },
+      error(error) {
+        console.error(`[ERROR] Server error:`, error);
+        return new Response(`Internal Server Error: ${error.message}`, {
+          status: 500,
+          statusText: "Internal Server Error",
+        });
+      },
+    });
 
-  console.log(`[DEBUG] Server object created successfully!`);
+    console.log(`[DEBUG] Server object created successfully!`);
+    console.log(`[DEBUG] Server actually listening on ${g.server.hostname}:${g.server.port}`);
+
+    // Verify the server is actually listening
+    setTimeout(() => {
+      if (g.server && g.server.port === g.port) {
+        console.log(`[DEBUG] ✓ Server verified to be listening on port ${g.port}`);
+      } else {
+        console.error(`[ERROR] ✗ Server not properly bound to port ${g.port}`);
+      }
+    }, 100);
+
+  } catch (error) {
+    console.error(`[ERROR] Failed to start Bun.serve:`, error);
+    throw error;
+  }
 
   if (process.env.PRASI_MODE === "dev") {
     g.log.info(`http://localhost:${g.server.port}`);
