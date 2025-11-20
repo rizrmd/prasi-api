@@ -20,7 +20,7 @@ export const serveWeb = async (arg: {
 
   const response = createResponse(arg.content, {
     cache_accept: arg.cache_accept,
-    high_compression: true,
+    high_compression: false, // Disable compression to prevent hanging
     headers: !type ? undefined : { "content-type": type },
     rewrite: arg.opt?.rewrite,
   });
