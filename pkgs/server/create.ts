@@ -87,8 +87,12 @@ export const createServer = async () => {
       port: g.port,
       maxRequestBodySize: 1024 * 1024 * 128,
       hostname: "0.0.0.0", // Explicitly bind to all interfaces
+      development: false, // Force production mode
       async fetch(req) {
-      const url = new URL(req.url) as URL;
+        console.log(`[DEBUG] Request received: ${req.method} ${req.url}`);
+        console.log(`[DEBUG] Request headers:`, Object.fromEntries(req.headers.entries()));
+        try {
+          const url = new URL(req.url) as URL;
       url.pathname = url.pathname.replace(/\/+/g, "/");
 
       const prasi = {};
@@ -185,7 +189,15 @@ export const createServer = async () => {
         }
       }
 
-      return handle(req);
+          return handle(req);
+        } catch (fetchError) {
+          console.error(`[ERROR] Fetch handler error:`, fetchError);
+          console.error(`[ERROR] Stack trace:`, fetchError.stack);
+          return new Response(`Fetch Handler Error: ${fetchError.message}`, {
+            status: 500,
+            statusText: "Internal Server Error",
+          });
+        }
       },
       error(error) {
         console.error(`[ERROR] Server error:`, error);
