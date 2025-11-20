@@ -27,6 +27,23 @@ export const serveWeb = async (arg: {
 
   const endTime = Date.now();
   console.log(`[DEBUG] createResponse completed in ${endTime - startTime}ms`);
+  console.log(`[DEBUG] Response object created:`, {
+    status: response.status,
+    statusText: response.statusText,
+    hasHeaders: response.headers ? 'yes' : 'no',
+    contentType: response.headers?.get('content-type'),
+    bodyLength: arg.content.length
+  });
 
-  return response;
+  // Try returning a basic Response object to isolate the issue
+  const basicResponse = new Response(arg.content, {
+    status: 200,
+    headers: {
+      'Content-Type': type || 'text/html',
+      'Cache-Control': 'no-cache'
+    }
+  });
+
+  console.log(`[DEBUG] Basic response created, returning...`);
+  return basicResponse;
 };
