@@ -102,12 +102,9 @@ export const deploy = {
       };
 
       if (g.deploy.content) {
-        // Start compression in background to avoid blocking server startup
-        setTimeout(() => {
-          console.log(`[DEBUG] Starting background Brotli compression...`);
-          startBrCompress();
-        }, 1000);
-        console.log(`[DEBUG] Compression scheduled for background`);
+        // Skip Brotli compression entirely to prevent blocking server startup
+        console.log(`[DEBUG] Skipping Brotli compression to enable fast startup`);
+        console.log(`[DEBUG] Brotli compression disabled - starting server immediately`);
 
         if (exists(dir("public"))) {
           await removeAsync(dir("public"));
