@@ -82,6 +82,26 @@ export const createServer = async () => {
 
   console.log(`[DEBUG] Starting Bun.serve on port ${g.port}...`);
 
+  // First try a minimal test server to isolate Bun.serve issues
+  console.log(`[DEBUG] Creating minimal test server first...`);
+  try {
+    const testServer = Bun.serve({
+      port: 3001, // Use different port for testing
+      hostname: "0.0.0.0",
+      development: false,
+      fetch(req) {
+        console.log(`[TEST] Minimal server request: ${req.method} ${req.url}`);
+        return new Response("Test server working!", {
+          status: 200,
+          headers: { "Content-Type": "text/plain" }
+        });
+      },
+    });
+    console.log(`[DEBUG] ✓ Test server listening on ${testServer.hostname}:${testServer.port}`);
+  } catch (testError) {
+    console.error(`[ERROR] Test server failed:`, testError);
+  }
+
   try {
     g.server = Bun.serve({
       port: g.port,
