@@ -109,14 +109,31 @@ export const createServer = async () => {
       hostname: "0.0.0.0", // Explicitly bind to all interfaces
       development: false, // Force production mode
       async fetch(req) {
+        console.log(`[DEBUG] === FETCH HANDLER CALLED ===`);
         console.log(`[DEBUG] Request received: ${req.method} ${req.url}`);
         console.log(`[DEBUG] Request headers:`, Object.fromEntries(req.headers.entries()));
-        try {
-          const url = new URL(req.url) as URL;
-      url.pathname = url.pathname.replace(/\/+/g, "/");
 
-      const prasi = {};
-      const index = prodIndex(g.deploy.config.site_id, prasi);
+        // IMMEDIATE RESPONSE FOR TESTING
+        if (req.url === '/') {
+          console.log(`[DEBUG] Returning immediate test response for root path`);
+          return new Response('Test response working!', {
+            status: 200,
+            headers: { 'Content-Type': 'text/plain' }
+          });
+        }
+
+        try {
+          console.log(`[DEBUG] Processing normal request flow...`);
+          const url = new URL(req.url) as URL;
+          url.pathname = url.pathname.replace(/\/+/g, "/");
+          console.log(`[DEBUG] Processed URL: ${url.pathname}`);
+
+          console.log(`[DEBUG] Creating prasi object...`);
+          const prasi = {};
+
+          console.log(`[DEBUG] Creating index...`);
+          const index = prodIndex(g.deploy.config.site_id, prasi);
+          console.log(`[DEBUG] Index created successfully`);
 
       const handle = async (
         req: Request,
