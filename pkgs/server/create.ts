@@ -12,9 +12,12 @@ import { serveWeb } from "./serve-web";
 import exitHook from "exit-hook";
 
 export const createServer = async () => {
+  console.log(`[DEBUG] Starting server creation...`);
   g.router = createRouter({ strictTrailingSlash: true });
   g.api = {};
+
   const scan = async (path: string, root?: string) => {
+    console.log(`[DEBUG] Scanning API directory: ${path}`);
     const apis = await listAsync(path);
     if (apis) {
       for (const filename of apis) {
@@ -55,9 +58,13 @@ export const createServer = async () => {
       }
     }
   };
+  console.log(`[DEBUG] Starting API directory scans...`);
   await scan(dir(`app/srv/api`));
+  console.log(`[DEBUG] app/srv/api scan completed`);
   await scan(dir(`pkgs/api`));
+  console.log(`[DEBUG] pkgs/api scan completed`);
 
+  console.log(`[DEBUG] Creating server functions...`);
   g.createServer = (arg) => {
     return async (site_id: string) => {
       return arg;
@@ -70,8 +77,10 @@ export const createServer = async () => {
     });
   }
 
+  console.log(`[DEBUG] Ensuring server is not running...`);
   await ensureNotRunning();
 
+  console.log(`[DEBUG] Starting Bun.serve on port ${g.port}...`);
   g.server = Bun.serve({
     port: g.port,
     maxRequestBodySize: 1024 * 1024 * 128,
@@ -177,9 +186,14 @@ export const createServer = async () => {
     },
   });
 
+  console.log(`[DEBUG] Server object created successfully!`);
+
   if (process.env.PRASI_MODE === "dev") {
     g.log.info(`http://localhost:${g.server.port}`);
+    console.log(`[DEBUG] Server started in DEV mode`);
   } else {
     g.log.info(`Started at port: ${g.server.port}`);
+    console.log(`[DEBUG] Server started in PROD mode`);
   }
+  console.log(`[DEBUG] createServer function completed successfully!`);
 };
