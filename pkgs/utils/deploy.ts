@@ -345,7 +345,7 @@ export const deploy = {
               g.deploy.content.code.site[relativePath] = new TextDecoder().decode(fileContent);
             }
           } else if (entry.filename.startsWith('core/')) {
-            const relativePath = entry.filename.slice(6); // Remove 'core/' prefix
+            const relativePath = entry.filename.slice(5); // Remove 'core/' prefix
             const binaryExtensions = ['.js', '.json'];
             const isBinary = binaryExtensions.some(ext => relativePath.toLowerCase().endsWith(ext));
 
