@@ -40,6 +40,14 @@ process.on("message", (message) => {
   }
 });
 
+process.on("uncaughtException", (err) => {
+  console.error("[FATAL] Uncaught exception (server kept alive):", err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[FATAL] Unhandled rejection (server kept alive):", reason);
+});
+
 if (!(await existsAsync(dir("app/db")))) {
   await $`unzip -o pkgs/zip/dbzip -d app`;
 }
