@@ -22,7 +22,7 @@ export const _ = {
       | { type: "domain-add"; domain: string }
       | { type: "domain-del"; domain: string }
       | { type: "deploy-del"; ts: string }
-      | { type: "deploy"; load_from?: string }
+      | { type: "deploy"; dlurl?: string }
       | { type: "deploy-status" }
       | { type: "redeploy"; ts: string }
     ) & {
@@ -48,8 +48,8 @@ export const _ = {
           now: Date.now(),
           current: parseInt(g.deploy.config.deploy.ts),
           deploys: deploys
-            .filter((e) => e.endsWith(".gz"))
-            .map((e) => parseInt(e.replace(".gz", ""))),
+            .filter((e) => e.endsWith(".gz") || e.endsWith(".zip"))
+            .map((e) => parseInt(e.replace(/\.(gz|zip)$/, ""))),
           db: {
             url: g.dburl || "-",
           },
@@ -151,14 +151,15 @@ export const _ = {
       case "deploy-del":
         {
           await removeAsync(dir(`/app/web/deploy/${action.ts}.gz`));
+          await removeAsync(dir(`/app/web/deploy/${action.ts}.zip`));
           const deploys = fs.readdirSync(dir(`/app/web/deploy`));
 
           return {
             now: Date.now(),
             current: parseInt(deploy.config.deploy.ts),
             deploys: deploys
-              .filter((e) => e.endsWith(".gz"))
-              .map((e) => parseInt(e.replace(".gz", ""))),
+              .filter((e) => e.endsWith(".gz") || e.endsWith(".zip"))
+              .map((e) => parseInt(e.replace(/\.(gz|zip)$/, ""))),
           };
         }
         break;
@@ -170,7 +171,7 @@ export const _ = {
 
           await deploy.saveConfig();
           deploy.config.deploy.ts = Date.now() + "";
-          await deploy.init(action.load_from);
+          await deploy.init(action.dlurl);
           const deploys = fs.readdirSync(dir(`/app/web/deploy`));
 
           if (g.mode === "prod") {
@@ -181,8 +182,8 @@ export const _ = {
             now: Date.now(),
             current: parseInt(deploy.config.deploy.ts),
             deploys: deploys
-              .filter((e) => e.endsWith(".gz"))
-              .map((e) => parseInt(e.replace(".gz", ""))),
+              .filter((e) => e.endsWith(".gz") || e.endsWith(".zip"))
+              .map((e) => parseInt(e.replace(/\.(gz|zip)$/, ""))),
           };
         }
         break;
@@ -197,8 +198,8 @@ export const _ = {
             now: Date.now(),
             current: parseInt(deploy.config.deploy.ts),
             deploys: deploys
-              .filter((e) => e.endsWith(".gz"))
-              .map((e) => parseInt(e.replace(".gz", ""))),
+              .filter((e) => e.endsWith(".gz") || e.endsWith(".zip"))
+              .map((e) => parseInt(e.replace(/\.(gz|zip)$/, ""))),
           };
         }
         break;
