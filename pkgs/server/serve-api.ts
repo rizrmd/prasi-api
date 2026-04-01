@@ -22,12 +22,6 @@ export const serveAPI = async (url: URL, req: Request) => {
 
     if (req.method !== "GET" && !found.raw) {
       if (!req.headers.get("content-type")?.startsWith("multipart/form-data")) {
-        const contentLength = parseInt(
-          req.headers.get("content-length") || "0"
-        );
-        if (contentLength > 50 * 1024 * 1024) {
-          return new Response("Payload too large", { status: 413 });
-        }
         try {
           const json = await req.json();
           if (typeof json === "object") {
