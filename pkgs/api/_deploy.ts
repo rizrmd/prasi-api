@@ -69,6 +69,8 @@ export const _ = {
         const res = await fetch(action.url);
         const text = await res.text();
         if (text) {
+          await dirAsync(dir("app/db/prisma"));
+          await dirAsync(dir(`${g.datadir}`));
           await Bun.write(dir("app/db/prisma/schema.prisma"), text);
           await Bun.write(dir(`${g.datadir}/db-ver`), Date.now().toString());
         }
@@ -77,8 +79,10 @@ export const _ = {
       case "db-update":
         if (action.url) {
           g.dburl = action.url;
+          const envFile = Bun.file(dir(".env"));
+          const existingEnv = (await envFile.exists()) ? await envFile.text() : "";
           const env = genEnv({
-            ...parseEnv(await Bun.file(dir(".env")).text()),
+            ...parseEnv(existingEnv),
             DATABASE_URL: action.url,
           });
           await Bun.write(dir(".env"), env);
