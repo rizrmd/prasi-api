@@ -48,8 +48,9 @@ export const deploy = {
   async init(load_from?: string) {
     await dirAsync(dir(`app/web/deploy`));
 
-    // Always download fresh content for deploy
-    await this.run(load_from);
+    if (!(await this.has_gz())) {
+      await this.run(load_from);
+    }
 
     await this.load(this.config.deploy.ts);
   },
@@ -216,6 +217,7 @@ export const deploy = {
     await Bun.write(file, buf);
     await Bun.write(dir(`app/web/deploy/${ts}.info`), JSON.stringify({
       format: "zip",
+      version: 2,
       timestamp: ts,
       site_id: this.config.site_id
     }, null, 2));
@@ -687,10 +689,25 @@ export const deploy = {
 
   has_gz() {
     if (this.config.deploy.ts) {
-      return (
-        Bun.file(dir(`app/web/deploy/${this.config.deploy.ts}.zip`)).exists() ||
-        Bun.file(dir(`app/web/deploy/${this.config.deploy.ts}.gz`)).exists()
-      );
+      const zipPath = dir(`app/web/deploy/${this.config.deploy.ts}.zip`);
+      const gzPath = dir(`app/web/deploy/${this.config.deploy.ts}.gz`);
+
+      if (Bun.file(zipPath).exists()) {
+        // Verify the zip is for the correct site and uses current format
+        const infoPath = dir(`app/web/deploy/${this.config.deploy.ts}.info`);
+        try {
+          const info = JSON.parse(Bun.file(infoPath).text());
+          if (info.site_id === this.config.site_id && info.format === "zip" && info.version === 2) {
+            return true;
+          }
+        } catch (e) {
+          // Info file missing or invalid — treat as needs download
+        }
+      }
+
+      if (Bun.file(gzPath).exists()) {
+        return true;
+      }
     }
 
     return false;
