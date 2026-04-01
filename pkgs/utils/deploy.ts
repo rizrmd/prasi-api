@@ -6,7 +6,7 @@ import {
   removeAsync,
   writeAsync,
 } from "fs-jetpack";
-import yauzl from "yauzl";
+import unzipper from "unzipper";
 import { decode } from "msgpackr";
 import { createRouter } from "radix3";
 import { startBrCompress } from "./br-load";
@@ -227,8 +227,6 @@ export const deploy = {
         throw new Error(`ZIP file not found: ${zipPath}`);
       }
 
-      const zipBuffer = await Bun.file(zipPath).arrayBuffer();
-
       g.deploy.content = {
         layouts: [],
         pages: [],
@@ -242,88 +240,55 @@ export const deploy = {
         },
       };
 
+      const zip = await unzipper.Open.file(zipPath);
       let foundMetadata = false;
 
-      await new Promise<void>((resolve, reject) => {
-        yauzl.fromBuffer(Buffer.from(zipBuffer), { lazyEntries: true }, (err, zipfile) => {
-          if (err || !zipfile) {
-            reject(err || new Error("Failed to open ZIP"));
-            return;
-          }
+      for (const entry of zip.files) {
+        const entryName = entry.path;
+        if (entry.type === "Directory" || entryName.endsWith("/")) continue;
 
-          zipfile.on("entry", (entry: yauzl.Entry) => {
-            const entryName = entry.fileName;
-            if (entryName.endsWith("/")) {
-              zipfile.readEntry();
-              return;
+        try {
+          const fileContent: Buffer = await entry.buffer();
+
+          if (entryName === "metadata.json") {
+            const metadata = JSON.parse(fileContent.toString());
+            this.detectMetadataInflation(metadata);
+            g.deploy.content.layouts = metadata.layouts || [];
+            g.deploy.content.pages = metadata.pages || [];
+            g.deploy.content.comps = metadata.components || [];
+            g.deploy.content.site = metadata.site;
+            foundMetadata = true;
+            console.log(`[DEBUG] Loaded metadata: ${metadata.layouts?.length || 0} layouts, ${metadata.pages?.length || 0} pages, ${metadata.components?.length || 0} components`);
+          } else if (entryName.startsWith("public/")) {
+            const rel = entryName.slice(7);
+            const ext = rel.toLowerCase().split(".").pop() || "";
+            const binary = ["jpg","jpeg","png","gif","ico","svg","woff","woff2","ttf","eot","js","css","map","webp","avif","otf"].includes(ext);
+            g.deploy.content.public[rel] = binary ? new Uint8Array(fileContent) : fileContent.toString();
+          } else if (entryName.startsWith("server/")) {
+            const rel = entryName.slice(7);
+            const ext = rel.toLowerCase().split(".").pop() || "";
+            const binary = ["js","map","json"].includes(ext);
+            g.deploy.content.code.server[rel] = binary ? new Uint8Array(fileContent) : fileContent.toString();
+          } else if (entryName.startsWith("site/")) {
+            const rel = entryName.slice(5);
+            const ext = rel.toLowerCase().split(".").pop() || "";
+            const binary = ["js","css","map","json","woff","woff2","ttf","webp","avif","otf"].includes(ext);
+            g.deploy.content.code.site[rel] = binary ? new Uint8Array(fileContent) : fileContent.toString();
+          } else if (entryName.startsWith("core/")) {
+            const rel = entryName.slice(5);
+            const ext = rel.toLowerCase().split(".").pop() || "";
+            const binary = ["js","json","css","woff","woff2","ttf","webp","avif","otf","map"].includes(ext);
+            g.deploy.content.code.core[rel] = binary ? new Uint8Array(fileContent) : fileContent.toString();
+          } else if (entryName.startsWith("content/")) {
+            if (!g.deploy.content._contentTrees) {
+              g.deploy.content._contentTrees = {};
             }
-
-            zipfile.openReadStream(entry, (err, readStream) => {
-              if (err || !readStream) {
-                console.warn(`[WARN] Failed to read ${entryName}:`, err?.message);
-                zipfile.readEntry();
-                return;
-              }
-
-              const chunks: Buffer[] = [];
-              readStream.on("data", (chunk: Buffer) => chunks.push(chunk));
-              readStream.on("end", () => {
-                const fileContent = Buffer.concat(chunks);
-
-                try {
-                  if (entryName === "metadata.json") {
-                    const metadata = JSON.parse(fileContent.toString());
-                    this.detectMetadataInflation(metadata);
-                    g.deploy.content.layouts = metadata.layouts || [];
-                    g.deploy.content.pages = metadata.pages || [];
-                    g.deploy.content.comps = metadata.components || [];
-                    g.deploy.content.site = metadata.site;
-                    foundMetadata = true;
-                    console.log(`[DEBUG] Loaded metadata: ${metadata.layouts?.length || 0} layouts, ${metadata.pages?.length || 0} pages, ${metadata.components?.length || 0} components`);
-                  } else if (entryName.startsWith("public/")) {
-                    const rel = entryName.slice(7);
-                    const ext = rel.toLowerCase().split(".").pop() || "";
-                    const binary = ["jpg","jpeg","png","gif","ico","svg","woff","woff2","ttf","eot","js","css","map","webp","avif","otf"].includes(ext);
-                    g.deploy.content.public[rel] = binary ? new Uint8Array(fileContent) : fileContent.toString();
-                  } else if (entryName.startsWith("server/")) {
-                    const rel = entryName.slice(7);
-                    const ext = rel.toLowerCase().split(".").pop() || "";
-                    const binary = ["js","map","json"].includes(ext);
-                    g.deploy.content.code.server[rel] = binary ? new Uint8Array(fileContent) : fileContent.toString();
-                  } else if (entryName.startsWith("site/")) {
-                    const rel = entryName.slice(5);
-                    const ext = rel.toLowerCase().split(".").pop() || "";
-                    const binary = ["js","css","map","json","woff","woff2","ttf","webp","avif","otf"].includes(ext);
-                    g.deploy.content.code.site[rel] = binary ? new Uint8Array(fileContent) : fileContent.toString();
-                  } else if (entryName.startsWith("core/")) {
-                    const rel = entryName.slice(5);
-                    const ext = rel.toLowerCase().split(".").pop() || "";
-                    const binary = ["js","json","css","woff","woff2","ttf","webp","avif","otf","map"].includes(ext);
-                    g.deploy.content.code.core[rel] = binary ? new Uint8Array(fileContent) : fileContent.toString();
-                  } else if (entryName.startsWith("content/")) {
-                    if (!g.deploy.content._contentTrees) {
-                      g.deploy.content._contentTrees = {};
-                    }
-                    g.deploy.content._contentTrees[entryName] = fileContent.toString();
-                  }
-                } catch (fileError: any) {
-                  console.warn(`[WARN] Failed to process ${entryName}:`, fileError.message);
-                }
-
-                zipfile.readEntry();
-              });
-              readStream.on("error", (e) => {
-                console.warn(`[WARN] Stream error for ${entryName}:`, e.message);
-                zipfile.readEntry();
-              });
-            });
-          });
-
-          zipfile.on("end", () => resolve());
-          zipfile.on("error", (e) => reject(e));
-          zipfile.readEntry();
-        });
-      });
+            g.deploy.content._contentTrees[entryName] = fileContent.toString();
+          }
+        } catch (fileError: any) {
+          console.warn(`[WARN] Failed to process ${entryName}:`, fileError.message);
+        }
+      }
 
       if (!foundMetadata) {
         throw new Error("metadata.json not found in ZIP file");
