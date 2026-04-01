@@ -48,9 +48,8 @@ export const deploy = {
   async init(load_from?: string) {
     await dirAsync(dir(`app/web/deploy`));
 
-    if (!(await this.has_gz())) {
-      await this.run();
-    }
+    // Always download fresh content for deploy
+    await this.run(load_from);
 
     await this.load(this.config.deploy.ts);
   },
