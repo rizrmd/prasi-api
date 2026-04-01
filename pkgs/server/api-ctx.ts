@@ -78,7 +78,7 @@ export const createResponse = (
   }
 
   let content: any =
-    typeof pre_content === "string" || is_binary
+    typeof pre_content === "string" || pre_content instanceof Uint8Array || is_binary
       ? pre_content
       : JSON.stringify(pre_content);
 
@@ -99,7 +99,11 @@ export const createResponse = (
     }
 
     if (opt.cache_accept.toLowerCase().includes("gz")) {
-      if (opt?.high_compression) {
+      if (content instanceof Uint8Array) {
+        // Binary content - convert to ArrayBuffer before gzipping
+        content = Bun.gzipSync(content);
+        headers["content-encoding"] = "gzip";
+      } else if (opt?.high_compression) {
         if (!cached) {
           const content_hash = simpleHash(content);
           if (!g.cache.gz[content_hash]) {

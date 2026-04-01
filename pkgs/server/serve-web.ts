@@ -1,49 +1,26 @@
 import mime from "mime";
-import { createResponse } from "service-srv";
 
-export const serveWeb = async (arg: {
+export const serveWeb = (arg: {
   pathname: string;
-  content: string;
+  content: string | Uint8Array;
   cache_accept: string;
-  opt?: {
-    rewrite?: (arg: {
-      body: Bun.BodyInputStream;
-      headers: Headers | any;
-    }) => Bun.BodyInputStream;
-  };
 }) => {
-  console.log(`[DEBUG] serveWeb called for: ${arg.pathname}, content length: ${arg.content.length}`);
-  const startTime = Date.now();
-
   const type = mime.getType(arg.pathname);
-  console.log(`[DEBUG] MIME type: ${type}`);
 
-  const response = createResponse(arg.content, {
-    cache_accept: arg.cache_accept,
-    high_compression: false, // Disable compression to prevent hanging
-    headers: !type ? undefined : { "content-type": type },
-    rewrite: arg.opt?.rewrite,
-  });
+  let body: string | Uint8Array = arg.content;
+  let contentEncoding: string | undefined;
 
-  const endTime = Date.now();
-  console.log(`[DEBUG] createResponse completed in ${endTime - startTime}ms`);
-  console.log(`[DEBUG] Response object created:`, {
-    status: response.status,
-    statusText: response.statusText,
-    hasHeaders: response.headers ? 'yes' : 'no',
-    contentType: response.headers?.get('content-type'),
-    bodyLength: arg.content.length
-  });
+  if (arg.cache_accept.includes("br") && typeof body === "string") {
+    body = Bun.gzipSync(body);
+    contentEncoding = "gzip";
+  } else if (arg.cache_accept.includes("gz") && typeof body === "string") {
+    body = Bun.gzipSync(body);
+    contentEncoding = "gzip";
+  }
 
-  // Try returning a basic Response object to isolate the issue
-  const basicResponse = new Response(arg.content, {
-    status: 200,
-    headers: {
-      'Content-Type': type || 'text/html',
-      'Cache-Control': 'no-cache'
-    }
-  });
+  const headers: Record<string, string> = {};
+  if (type) headers["content-type"] = type;
+  if (contentEncoding) headers["content-encoding"] = contentEncoding;
 
-  console.log(`[DEBUG] Basic response created, returning...`);
-  return basicResponse;
+  return new Response(body, { headers });
 };

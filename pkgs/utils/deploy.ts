@@ -15,14 +15,6 @@ import { gunzipAsync } from "./gzip";
 
 const decoder = new TextDecoder();
 
-interface ZipEntry {
-  filename: string;
-  localHeaderOffset: number;
-  compressedSize: number;
-  uncompressedSize: number;
-  fileNameLength: number;
-  extraFieldLength: number;
-}
 
 const createDbProxy = () => {
   return new Proxy({}, {
@@ -228,21 +220,18 @@ export const deploy = {
   async loadFromZip(ts: string) {
     try {
       console.log(`[DEBUG] Starting ZIP load for timestamp: ${ts}`);
-      const zipFile = Bun.file(dir(`app/web/deploy/${ts}.zip`));
+      const zipPath = dir(`app/web/deploy/${ts}.zip`);
+      const zipFile = Bun.file(zipPath);
 
       if (!await zipFile.exists()) {
-        throw new Error(`ZIP file not found: ${zipFile.path}`);
+        throw new Error(`ZIP file not found: ${zipPath}`);
       }
 
       console.log(`[DEBUG] ZIP file exists, size: ${await zipFile.size} bytes`);
 
-      // Read ZIP file as buffer
-      const zipBuffer = new Uint8Array(await zipFile.arrayBuffer());
-      console.log(`[DEBUG] ZIP buffer loaded, length: ${zipBuffer.length} bytes`);
-
-      // Parse ZIP file structure
-      const zipEntries = await this.parseZipBuffer(zipBuffer);
-      console.log(`[DEBUG] ZIP entries parsed: ${zipEntries.length} entries`);
+      // Use Bun's built-in ZIP parser
+      const zip = new Bun.ZipFile(zipPath);
+      console.log(`[DEBUG] ZIP entries count: ${zip.entriescount}`);
 
       // Create deploy content structure
       g.deploy.content = {
@@ -261,137 +250,89 @@ export const deploy = {
       let foundMetadata = false;
       let loadedFiles = 0;
 
-      // Process each entry in the ZIP
-      console.log(`[DEBUG] Processing ${zipEntries.length} ZIP entries...`);
-      for (const entry of zipEntries) {
-        if (entry.filename.endsWith('/')) {
-          console.log(`[DEBUG] Skipping directory: ${entry.filename}`);
-          continue;
-        }
+      // Process each entry
+      for (const entry of zip.entries) {
+        const entryName = entry.name;
+
+        if (entryName.endsWith('/')) continue;
 
         try {
-          console.log(`[DEBUG] Processing file: "${entry.filename}" (${entry.compressedSize} -> ${entry.uncompressedSize} bytes)`);
+          loadedFiles++;
 
-          // Extract file data from ZIP buffer
-          const fileContent = await this.extractFileFromZip(zipBuffer, entry);
+          if (entryName === 'metadata.json') {
+            console.log(`[DEBUG] Found metadata.json, parsing...`);
+            const data = await entry.arrayBuffer();
+            const text = new TextDecoder().decode(data);
+            const metadata = JSON.parse(text);
 
-          if (entry.filename === 'metadata.json') {
-            console.log(`[DEBUG] ✓ Found metadata.json entry!`);
-            console.log(`[DEBUG] Found metadata.json, parsing content...`);
-            console.log(`[DEBUG] metadata.json file size: ${fileContent.length} bytes`);
+            this.detectMetadataInflation(metadata);
 
-            const metadataStr = new TextDecoder().decode(fileContent);
-            console.log(`[DEBUG] metadata.json decoded to string, length: ${metadataStr.length}`);
-            console.log(`[DEBUG] metadata.json preview:`, metadataStr.substring(0, 100));
+            g.deploy.content.layouts = metadata.layouts || [];
+            g.deploy.content.pages = metadata.pages || [];
+            g.deploy.content.comps = metadata.components || [];
+            g.deploy.content.site = metadata.site;
 
-            let metadata;
-
-            try {
-              metadata = JSON.parse(metadataStr);
-              console.log(`[DEBUG] Successfully parsed metadata.json`);
-              console.log(`[DEBUG] foundMetadata flag before setting: ${foundMetadata}`);
-
-              // Detect metadata inflation and identify problematic items
-              this.detectMetadataInflation(metadata);
-
-              // Update deploy content with metadata
-              g.deploy.content.layouts = metadata.layouts || [];
-              g.deploy.content.pages = metadata.pages || [];
-              g.deploy.content.comps = metadata.components || [];
-              g.deploy.content.site = metadata.site;
-
-              foundMetadata = true;
-              console.log(`[DEBUG] foundMetadata flag after setting: ${foundMetadata}`);
-
-              console.log(`[DEBUG] Parsed metadata:`, {
-                layouts: metadata.layouts?.length || 0,
-                pages: metadata.pages?.length || 0,
-                components: metadata.components?.length || 0,
-                hasSite: !!metadata.site
-              });
-
-            } catch (jsonError) {
-              console.error(`[ERROR] Failed to parse metadata.json: ${jsonError.message}`);
-              console.error(`[ERROR] JSON content preview:`, metadataStr.substring(0, 200));
-              throw new Error(`Invalid JSON in metadata.json: ${jsonError.message}`);
-            }
-          } else if (entry.filename.startsWith('public/')) {
-            const relativePath = entry.filename.slice(7); // Remove 'public/' prefix
-            const binaryExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.ico', '.svg', '.woff', '.woff2', '.ttf', '.eot', '.js', '.css', '.map'];
-            const isBinary = binaryExtensions.some(ext => relativePath.toLowerCase().endsWith(ext));
-
-            if (isBinary) {
-              g.deploy.content.public[relativePath] = fileContent;
+            foundMetadata = true;
+            console.log(`[DEBUG] Loaded metadata: ${metadata.layouts?.length || 0} layouts, ${metadata.pages?.length || 0} pages, ${metadata.components?.length || 0} components`);
+          } else if (entryName.startsWith('public/')) {
+            const relativePath = entryName.slice(7);
+            const ext = relativePath.toLowerCase().split('.').pop() || '';
+            const binaryExts = ['jpg', 'jpeg', 'png', 'gif', 'ico', 'svg', 'woff', 'woff2', 'ttf', 'eot', 'js', 'css', 'map', 'webp', 'avif', 'otf'];
+            if (binaryExts.includes(ext)) {
+              g.deploy.content.public[relativePath] = new Uint8Array(await entry.arrayBuffer());
             } else {
-              g.deploy.content.public[relativePath] = new TextDecoder().decode(fileContent);
+              g.deploy.content.public[relativePath] = new TextDecoder().decode(await entry.arrayBuffer());
             }
-          } else if (entry.filename.startsWith('server/')) {
-            const relativePath = entry.filename.slice(7); // Remove 'server/' prefix
-            const binaryExtensions = ['.js', '.map', '.json'];
-            const isBinary = binaryExtensions.some(ext => relativePath.toLowerCase().endsWith(ext));
-
-            if (isBinary) {
-              g.deploy.content.code.server[relativePath] = fileContent;
+          } else if (entryName.startsWith('server/')) {
+            const relativePath = entryName.slice(7);
+            const ext = relativePath.toLowerCase().split('.').pop() || '';
+            const binaryExts = ['js', 'map', 'json'];
+            if (binaryExts.includes(ext)) {
+              g.deploy.content.code.server[relativePath] = new Uint8Array(await entry.arrayBuffer());
             } else {
-              g.deploy.content.code.server[relativePath] = new TextDecoder().decode(fileContent);
+              g.deploy.content.code.server[relativePath] = new TextDecoder().decode(await entry.arrayBuffer());
             }
-          } else if (entry.filename.startsWith('site/')) {
-            const relativePath = entry.filename.slice(5); // Remove 'site/' prefix
-            const binaryExtensions = ['.js', '.css', '.map', '.json', '.woff', '.woff2', '.ttf'];
-            const isBinary = binaryExtensions.some(ext => relativePath.toLowerCase().endsWith(ext));
-
-            if (isBinary) {
-              g.deploy.content.code.site[relativePath] = fileContent;
+          } else if (entryName.startsWith('site/')) {
+            const relativePath = entryName.slice(5);
+            const ext = relativePath.toLowerCase().split('.').pop() || '';
+            const binaryExts = ['js', 'css', 'map', 'json', 'woff', 'woff2', 'ttf', 'webp', 'avif', 'otf'];
+            if (binaryExts.includes(ext)) {
+              g.deploy.content.code.site[relativePath] = new Uint8Array(await entry.arrayBuffer());
             } else {
-              g.deploy.content.code.site[relativePath] = new TextDecoder().decode(fileContent);
+              g.deploy.content.code.site[relativePath] = new TextDecoder().decode(await entry.arrayBuffer());
             }
-          } else if (entry.filename.startsWith('core/')) {
-            const relativePath = entry.filename.slice(5); // Remove 'core/' prefix
-            const binaryExtensions = ['.js', '.json'];
-            const isBinary = binaryExtensions.some(ext => relativePath.toLowerCase().endsWith(ext));
-
-            if (isBinary) {
-              g.deploy.content.code.core[relativePath] = fileContent;
+          } else if (entryName.startsWith('core/')) {
+            const relativePath = entryName.slice(5);
+            const ext = relativePath.toLowerCase().split('.').pop() || '';
+            const binaryExts = ['js', 'json', 'css', 'woff', 'woff2', 'ttf', 'webp', 'avif', 'otf', 'map'];
+            if (binaryExts.includes(ext)) {
+              g.deploy.content.code.core[relativePath] = new Uint8Array(await entry.arrayBuffer());
             } else {
-              g.deploy.content.code.core[relativePath] = new TextDecoder().decode(fileContent);
+              g.deploy.content.code.core[relativePath] = new TextDecoder().decode(await entry.arrayBuffer());
             }
-          } else if (entry.filename.startsWith('content/')) {
-            // Store content tree files for later processing
+          } else if (entryName.startsWith('content/')) {
             if (!g.deploy.content._contentTrees) {
               g.deploy.content._contentTrees = {};
             }
-            g.deploy.content._contentTrees[entry.filename] = new TextDecoder().decode(fileContent);
-            console.log(`[DEBUG] Loaded content tree file: ${entry.filename} (${fileContent.length} bytes)`);
+            g.deploy.content._contentTrees[entryName] = new TextDecoder().decode(await entry.arrayBuffer());
           }
-
-          loadedFiles++;
         } catch (fileError) {
-          console.warn(`[WARN] Failed to process file ${entry.filename}:`, fileError.message);
+          console.warn(`[WARN] Failed to process file ${entryName}:`, fileError.message);
         }
       }
 
+      zip.close();
       console.log(`[DEBUG] ZIP processing completed: ${loadedFiles} files loaded`);
-      console.log(`[DEBUG] Final foundMetadata state: ${foundMetadata}`);
-
-      // Restore content_tree data from separate files if optimization was applied
-      if (g.deploy.content._contentTrees && Object.keys(g.deploy.content._contentTrees).length > 0) {
-        console.log(`[DEBUG] Restoring content_tree data from separate files...`);
-        this.restoreContentTrees(g.deploy.content);
-      }
 
       if (!foundMetadata) {
-        console.log(`[DEBUG] Available files in ZIP (${zipEntries.length} total entries):`);
-        for (const entry of zipEntries) {
-          console.log(`[DEBUG]  - ${entry.filename} (size: ${entry.uncompressedSize} bytes)`);
-        }
-        // Let's also try to find any JSON files
-        const jsonFiles = zipEntries.filter(entry => entry.filename.endsWith('.json'));
-        console.log(`[DEBUG] JSON files found: ${jsonFiles.length}`);
-        jsonFiles.forEach(entry => console.log(`[DEBUG]  - ${entry.filename}`));
         throw new Error("metadata.json not found in ZIP file");
       }
 
-      console.log(`[DEBUG] Successfully loaded ZIP deployment`);
+      // Restore content_tree data from separate files
+      if (g.deploy.content._contentTrees && Object.keys(g.deploy.content._contentTrees).length > 0) {
+        this.restoreContentTrees(g.deploy.content);
+      }
+
       console.log(`[DEBUG] Final content summary:`, {
         layouts: g.deploy.content.layouts?.length || 0,
         pages: g.deploy.content.pages?.length || 0,
@@ -402,6 +343,11 @@ export const deploy = {
         coreFiles: Object.keys(g.deploy.content.code.core).length,
       });
 
+      // Log first few keys in each store to verify correctness
+      console.log(`[DEBUG] Public keys (first 5):`, Object.keys(g.deploy.content.public).slice(0, 5));
+      console.log(`[DEBUG] Site keys (first 5):`, Object.keys(g.deploy.content.code.site).slice(0, 5));
+      console.log(`[DEBUG] Core keys (first 5):`, Object.keys(g.deploy.content.code.core).slice(0, 5));
+
     } catch (error) {
       console.error("[ERROR] Failed to load ZIP deployment:", error);
       console.error("[ERROR] Stack trace:", error.stack);
@@ -409,114 +355,6 @@ export const deploy = {
     }
   },
 
-  // Simple ZIP file parser
-  async parseZipBuffer(buffer: Uint8Array): Promise<ZipEntry[]> {
-    const entries: ZipEntry[] = [];
-    let offset = 0;
-    const view = new DataView(buffer.buffer);
-
-    // Look for ZIP end of central directory record
-    let endOfCentralDirOffset = 0;
-    for (let i = buffer.length - 22; i >= 0; i--) {
-      if (buffer[i] === 0x50 && buffer[i + 1] === 0x4b && buffer[i + 2] === 0x05 && buffer[i + 3] === 0x06) {
-        endOfCentralDirOffset = i;
-        break;
-      }
-    }
-
-    if (endOfCentralDirOffset === 0) {
-      throw new Error("Invalid ZIP file: no end of central directory found");
-    }
-
-    // Read central directory
-    const eocdView = new DataView(buffer.buffer, endOfCentralDirOffset, 22);
-    const centralDirOffset = eocdView.getUint32(16, true); // little-endian
-    const centralDirSize = eocdView.getUint32(12, true);
-
-    const centralDirView = new DataView(buffer.buffer, centralDirOffset, centralDirSize);
-    let centralDirPos = 0;
-
-    while (centralDirPos < centralDirSize) {
-      // Read central directory file header
-      const signature = centralDirView.getUint32(centralDirPos, true);
-      if (signature !== 0x02014b50) break;
-
-      const fileNameLength = centralDirView.getUint16(centralDirPos + 28, true);
-      const extraFieldLength = centralDirView.getUint16(centralDirPos + 30, true);
-      const commentLength = centralDirView.getUint16(centralDirPos + 32, true);
-      const localHeaderOffset = centralDirView.getUint32(centralDirPos + 42, true);
-
-      // Read filename
-      const fileNameBytes = new Uint8Array(buffer.buffer, centralDirOffset + centralDirPos + 46, fileNameLength);
-      const filename = new TextDecoder().decode(fileNameBytes);
-
-      // Get file size info from central directory (more reliable than local header)
-      const compressedSize = centralDirView.getUint32(centralDirPos + 20, true);
-      const uncompressedSize = centralDirView.getUint32(centralDirPos + 24, true);
-      const fileNameLength2 = centralDirView.getUint16(centralDirPos + 28, true);
-      const extraFieldLength2 = centralDirView.getUint16(centralDirPos + 30, true);
-
-      entries.push({
-        filename,
-        localHeaderOffset,
-        compressedSize,
-        uncompressedSize,
-        fileNameLength,
-        extraFieldLength
-      });
-
-      centralDirPos += 46 + fileNameLength + extraFieldLength + commentLength;
-    }
-
-    return entries;
-  },
-
-  // Extract file data from ZIP buffer
-  async extractFileFromZip(buffer: Uint8Array, entry: ZipEntry): Promise<Uint8Array> {
-    const localHeaderOffset = entry.localHeaderOffset;
-    const localHeaderView = new DataView(buffer.buffer, localHeaderOffset, 30);
-
-    // Verify local header signature
-    if (localHeaderView.getUint32(0, true) !== 0x04034b50) {
-      throw new Error(`Invalid local header for file: ${entry.filename}`);
-    }
-
-    const dataOffset = localHeaderOffset + 30 + entry.fileNameLength + entry.extraFieldLength;
-
-    if (entry.compressedSize === 0) {
-      // Empty file
-      return new Uint8Array(0);
-    }
-
-    // Extract compressed data
-    const compressedData = buffer.slice(dataOffset, dataOffset + entry.compressedSize);
-
-    // Check compression method (0 = no compression, 8 = DEFLATE)
-    const compressionMethod = localHeaderView.getUint16(8, true);
-    if (compressionMethod === 0) {
-      // No compression, return data as-is
-      return compressedData;
-    } else if (compressionMethod === 8) {
-      // DEFLATE compression - decompress using inflateRaw (for ZIP format)
-      try {
-        const { inflateRaw } = await import('zlib');
-        const decompressed = await new Promise<Buffer>((resolve, reject) => {
-          inflateRaw(compressedData, (err, result) => {
-            if (err) reject(err);
-            else resolve(result);
-          });
-        });
-        return new Uint8Array(decompressed);
-      } catch (error) {
-        console.warn(`[WARN] Failed to decompress ${entry.filename} with method ${compressionMethod}:`, error.message);
-        return compressedData;
-      }
-    } else {
-      // Other compression methods not supported
-      console.warn(`[WARN] Compressed file ${entry.filename} with unsupported method ${compressionMethod}`);
-      return compressedData;
-    }
-  },
   get config() {
     if (!g.deploy) {
       g.deploy = {
